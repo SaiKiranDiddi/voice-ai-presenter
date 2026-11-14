@@ -216,7 +216,7 @@
 .orb-stage {
   display: grid;
   place-items: center;
-  height: 156px;
+  height: 125px;
 }
 
 .orb {
@@ -226,8 +226,8 @@
   --swirl: 0;
   --ring-base: 0;
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 96px;
+  height: 96px;
   transition:
     --orb-hi 0.35s var(--ease-out),
     --orb-mid 0.35s var(--ease-out),
@@ -245,7 +245,7 @@
 
 /* Larger than the core so the halo shows around it; widens with the voice. */
 .orb-glow {
-  inset: -24px;
+  inset: -19px;
   background: radial-gradient(circle, var(--orb-glow) 50%, transparent 72%);
   filter: blur(12px);
   opacity: min(1, calc(var(--glow-base) + var(--level) * 0.7));
@@ -254,7 +254,7 @@
 }
 
 .orb-ring {
-  inset: -9px;
+  inset: -7px;
   border: 1.5px solid var(--orb-mid);
   opacity: min(0.85, calc(var(--ring-base) + var(--mic) * 2.4));
   transform: scale(calc(1 + var(--mic) * 0.22));
