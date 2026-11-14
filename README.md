@@ -17,6 +17,8 @@ cd backend && ../.venv/bin/uvicorn app.main:app --port 8000
 
 Open http://localhost:8000, press **Start presentation**, and allow the microphone. Headphones give the cleanest interruption.
 
+To watch it without a microphone, open http://localhost:8000/?silent: the agent presents the whole deck to a silent input.
+
 For frontend development, run `npm run dev` in `frontend/` alongside the backend; Vite proxies `/api` to port 8000.
 
 Tests: `cd backend && ../.venv/bin/python -m pytest`
@@ -36,6 +38,7 @@ Docker: `docker build -t presenter . && docker run -p 8000:8000 --env-file .env 
 | "Go back to slide two" | Presents the Mechanism slide from its start and continues from there |
 | Click a slide thumbnail | The agent stops and presents that slide straight away |
 | Press **Stop talking** | Audio stops and it waits for you |
+| Press **Pause**, then **Resume** | Speech stops and the microphone is muted; Resume presents the same block again |
 | "Is this a real drug?" | Says it is fictional |
 
 ## Architecture
@@ -61,22 +64,34 @@ Each slide has two to four typed blocks (`stat`, `chart`, `table`, `steps`, `cal
 
 The first version let the model drive the deck with a tool call per block. A smaller model would speak one block and then wait, so the user had to keep saying "continue". The split now is:
 
-- **The app sequences.** A small state machine in `useRealtimeSession.ts` owns a cursor into the deck. It sends the model a `PRESENT` note with one block's talking point and facts, highlights that block, and when the audio finishes it moves the cursor and sends the next. No tool call is needed to narrate, so there is no extra latency between blocks and the highlight cannot drift from the voice.
+- **The app sequences.** A small state machine in `useRealtimeSession.ts` owns a cursor into the deck. It sends the model a `PRESENT` note with one block's talking point and highlights that block. Shortly before that block's audio ends it asks for the next one, so the pause between blocks is short, and it moves the cursor and the highlight when the voice crosses over. No tool call is needed to narrate.
 - **The model judges.** When the user speaks, the model picks one of three tools: `show_answer(slide_id, block_id)` for a question, `continue_presentation()` to resume, `present_slide(slide_id)` to go to a slide. Off-topic questions get a spoken refusal and no tool.
 
 State transitions:
 
 | Event | What happens |
 |---|---|
-| Block audio finishes | Cursor advances; next block is presented. After the last block, a closing line |
-| User interrupts | Server cancels speech. Cursor stays on the interrupted block |
+| A block is close to finishing | The next block is requested (`NEXT_BLOCK_LEAD_MS` before the end, 700 ms by default) |
+| Block audio finishes | Cursor and highlight move to the next block. After the last block, a closing line |
+| User interrupts | Server cancels speech. Cursor stays on the interrupted block; a block requested ahead but not yet heard is discarded |
 | `show_answer` | Slide and block are highlighted as the answer source; facts are returned in the tool result; the model answers |
 | Answer or refusal finishes | Wait five seconds; if the user is silent, resume from the cursor |
 | `continue_presentation` | Resume from the cursor at once |
 | `present_slide` or a thumbnail click | Cursor moves to that slide's first block; presenting continues from there |
 | Stop talking | Speech is cancelled; nothing resumes until the user speaks or clicks |
+| Pause | Speech is cancelled, microphone muted, position held; Resume presents the cursor block again |
 
 A turn counts as finished only when the model has stopped generating and the audio has stopped playing. The model generates faster than it speaks, so acting on generation alone would change the slide mid-sentence.
+
+Timing the hand-over needs to know when a block's audio ends. Output audio is 50 ms per audio token, and the token count arrives with `response.done`, so the app computes the end time instead of waiting for silence. `NEXT_BLOCK_LEAD_MS` in `.env` sets how early the next block is requested: smaller gives a longer pause, a very large value removes the pause. `?lead=500` in the URL overrides it for one call.
+
+### Interface
+
+- **Welcome screen** until the first call connects, then the workspace: the slide, a filmstrip, and a side panel.
+- **The slide scales like a real slide.** Every size inside it is in container units, so the same component draws the stage, the filmstrip thumbnails, and the welcome preview.
+- **The highlighted block says why it is highlighted**: teal "Presenting" while the agent narrates, amber "Source for this answer" when it answers a question.
+- **The waveform is live.** It follows the agent's audio while it speaks and the microphone while it listens, so the user can see they are heard. The analysers are display only.
+- Plain CSS in `frontend/src/styles/`, Inter bundled with the app, no UI library. Motion respects `prefers-reduced-motion`.
 
 ### Interruption
 
@@ -100,15 +115,20 @@ backend/app/
   main.py        app, static file serving
 frontend/src/
   hooks/useRealtimeSession.ts   WebRTC call, events, tool calls, interruption
-  components/SlideView.tsx      layouts, transitions, highlight
+  components/SlideView.tsx      the slide: layouts, transitions, highlight
   components/Blocks.tsx         one renderer per block type
-  components/Panel.tsx          status, controls, transcript
+  components/Panel.tsx          voice card, controls, transcript
+  components/VoiceVisual.tsx    live waveform
+  components/Welcome.tsx        start screen
+  components/Icons.tsx          inline icons
+  styles/                       tokens, slide, panel
+backend/scripts/simulate.py     typed, text-only run against the real API
 ```
 
 ## Trade-offs and limits
 
 - **Speech-to-speech over a custom STT, LLM, TTS pipeline.** Lower latency and far less code, at the cost of less control over each stage and a single vendor.
-- **Each block is its own model turn**, so there is a short pause between blocks. No word-level highlighting: the API gives no word timings for spoken audio.
+- **Each block is its own model turn**, so there is a short pause between blocks; its length varies with how quickly the model starts speaking. No word-level highlighting: the API gives no word timings for spoken audio.
 - **Grounding is by prompt and tool result, not enforced.** A production system in a regulated setting would add an output check against approved claims before audio is released.
 - **Rate limit is in memory** and trusts `X-Forwarded-For`; fine for one demo instance.
 - The user transcript comes from a separate transcription model and can differ slightly from what the voice model heard.
