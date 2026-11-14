@@ -54,7 +54,7 @@ export function SlideCanvas({ deck, slide, slideIndex, focusId = null, mode = 'm
 
       <footer className="slide-footer">
         <span>{deck.disclaimer}</span>
-        <span className="slide-footer-brand">{deck.product}</span>
+        <span className="slide-footer-brand">{deck.name}</span>
       </footer>
     </div>
   )

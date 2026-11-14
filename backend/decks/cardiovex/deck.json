@@ -1,9 +1,27 @@
 {
   "id": "cardiovex-detail-aid",
-  "product": "Cardiovex",
+  "name": "Cardiovex",
+  "tagline": "Voice-led detail aid",
+  "badge": "Fictional product, demo only",
   "pronunciation": "CAR-dee-oh-vex",
   "disclaimer": "Cardiovex, the ASCEND-HTN trial and all data shown are fictional and exist only for this demo.",
-  "medical_information": "Cardiovex Medical Information, 1-800-555-0142",
+  "agent": {
+    "role": "You are a medical science liaison presenting Cardiovex to a physician over a voice call.",
+    "audience": "physician",
+    "style": [
+      "Warm, peer to peer, and brief. You are speaking with a busy clinician who can read the slide; say less than the slide shows."
+    ],
+    "out_of_scope": [
+      "off-label use",
+      "other products",
+      "pricing",
+      "advice for an individual patient"
+    ],
+    "refusal_line": "That's outside the approved material I can speak to. Medical Information can help with that; their number is on the summary slide.",
+    "guardrails": [
+      "If asked, be open that Cardiovex and its data are fictional and this is a technology demo."
+    ]
+  },
   "slides": [
     {
       "id": "intro",

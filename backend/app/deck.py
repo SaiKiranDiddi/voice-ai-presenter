@@ -1,15 +1,40 @@
 """Loads and validates the deck. The deck is the single source for the UI,
-the system prompt, and the facts the agent is allowed to state."""
+the system prompt, and the facts the agent is allowed to state.
 
-import json
+Each deck lives in its own folder, decks/<name>/deck.json, and carries both
+its content (slides, blocks, facts) and how the agent should present it (the
+"agent" section: role, audience, style, what to refuse). Switching decks is a
+matter of setting DECK; no code changes.
+"""
+
 from functools import lru_cache
+import json
 from pathlib import Path
 
+from .settings import get_settings
+
 BLOCK_TYPES = {"stat", "chart", "table", "steps", "callout"}
-DECK_PATH = Path(__file__).with_name("deck.json")
+AGENT_TEXT_FIELDS = ("role", "audience", "refusal_line")
+AGENT_LIST_FIELDS = ("style", "out_of_scope", "guardrails")
+
+
+def validate_agent(agent: dict) -> None:
+    for field in AGENT_TEXT_FIELDS:
+        if not isinstance(agent.get(field), str) or not agent[field].strip():
+            raise ValueError(f"agent.{field} must be a non-empty string")
+    for field in AGENT_LIST_FIELDS:
+        value = agent.get(field, [])
+        if not isinstance(value, list) or not all(isinstance(v, str) and v.strip() for v in value):
+            raise ValueError(f"agent.{field} must be a list of non-empty strings")
 
 
 def validate_deck(deck: dict) -> None:
+    for field in ("id", "name"):
+        if not isinstance(deck.get(field), str) or not deck[field].strip():
+            raise ValueError(f"deck.{field} must be a non-empty string")
+    if "agent" not in deck:
+        raise ValueError("deck needs an agent section")
+    validate_agent(deck["agent"])
     seen: set[str] = set()
     if not 5 <= len(deck["slides"]) <= 6:
         raise ValueError("deck must have 5-6 slides")
@@ -32,8 +57,24 @@ def validate_deck(deck: dict) -> None:
                 raise ValueError(f"block {bid} needs a talking_point and facts")
 
 
+def deck_path(decks_dir: Path, name: str) -> Path:
+    path = (decks_dir / name / "deck.json").resolve()
+    if decks_dir.resolve() not in path.parents:
+        raise ValueError(f"bad deck name {name!r}")
+    if not path.is_file():
+        available = sorted(p.parent.name for p in decks_dir.glob("*/deck.json"))
+        raise ValueError(f"no deck named {name!r} in {decks_dir}; available: {', '.join(available) or 'none'}")
+    return path
+
+
 @lru_cache
-def load_deck() -> dict:
-    deck = json.loads(DECK_PATH.read_text())
+def read_deck(decks_dir: Path, name: str) -> dict:
+    deck = json.loads(deck_path(decks_dir, name).read_text())
     validate_deck(deck)
     return deck
+
+
+def load_deck() -> dict:
+    """The deck chosen by the DECK setting."""
+    settings = get_settings()
+    return read_deck(settings.decks_dir, settings.deck)

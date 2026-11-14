@@ -5,7 +5,7 @@ import { Controls, Transcript, VoiceStatus } from './components/Panel'
 import { SlideCanvas, SlideView } from './components/SlideView'
 import { Welcome } from './components/Welcome'
 import { useRealtimeSession } from './hooks/useRealtimeSession'
-import type { AppConfig, Deck, FocusMode, View } from './types'
+import { DEFAULT_TAGLINE, type AppConfig, type Deck, type FocusMode, type View } from './types'
 
 const INITIAL_VIEW: View = { slideIndex: 0, blockId: null, mode: 'manual', transition: 'none' }
 
@@ -25,6 +25,7 @@ export default function App() {
       .then(([loadedDeck, loadedConfig]) => {
         setDeck(loadedDeck)
         setConfig(loadedConfig)
+        document.title = `${loadedDeck.name} voice presenter`
       })
       .catch((cause: Error) => setLoadError(cause.message))
   }, [])
@@ -127,8 +128,8 @@ export default function App() {
           <span className="brand-mark" aria-hidden="true">
             <PulseIcon />
           </span>
-          <span className="brand-name">{deck.product}</span>
-          <span className="brand-tag">Voice-led detail aid</span>
+          <span className="brand-name">{deck.name}</span>
+          <span className="brand-tag">{deck.tagline ?? DEFAULT_TAGLINE}</span>
         </div>
         <div className="topbar-right">
           {session.secondsLeft !== null && (
@@ -136,7 +137,7 @@ export default function App() {
               {formatClock(session.secondsLeft)}
             </span>
           )}
-          <span className="demo-badge">Fictional product, demo only</span>
+          {deck.badge && <span className="demo-badge">{deck.badge}</span>}
         </div>
       </header>
 

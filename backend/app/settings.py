@@ -20,6 +20,8 @@ class Settings:
     sessions_per_ip_per_hour: int
     next_block_lead_ms: int
     demo_access_code: str
+    deck: str
+    decks_dir: Path
     static_dir: Path
     log_dir: Path
 
@@ -36,6 +38,9 @@ def get_settings() -> Settings:
         # block. Smaller = longer pause between blocks; very large = no pause.
         next_block_lead_ms=max(0, int(os.getenv("NEXT_BLOCK_LEAD_MS", "700"))),
         demo_access_code=os.getenv("DEMO_ACCESS_CODE", ""),
+        # Which deck to present: a folder name under DECKS_DIR holding deck.json.
+        deck=os.getenv("DECK", "cardiovex"),
+        decks_dir=Path(os.getenv("DECKS_DIR", ROOT / "backend" / "decks")),
         static_dir=Path(os.getenv("STATIC_DIR", ROOT / "frontend" / "dist")),
         log_dir=Path(os.getenv("LOG_DIR", ROOT / "backend" / "logs")),
     )

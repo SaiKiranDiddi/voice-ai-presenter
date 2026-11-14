@@ -2,7 +2,7 @@
 
 An AI voice agent that presents a six-slide deck, jumps to the right slide when you ask a question, and stops talking the moment you interrupt.
 
-The deck is a detail aid for **Cardiovex, a fictional drug**, presented to a physician. The agent answers only from approved content, and every answer highlights the part of the slide it came from.
+The deck is a detail aid for **Cardiovex, a fictional drug**, presented to a physician. The agent answers only from approved content, and every answer highlights the part of the slide it came from. Decks are swappable: see [Decks](#decks).
 
 ## Run it
 
@@ -45,7 +45,7 @@ Docker: `docker build -t presenter . && docker run -p 8000:8000 --env-file .env 
 
 ```
 Browser (React)                        FastAPI                        OpenAI
-  GET  /api/deck  ------------------->  deck.json
+  GET  /api/deck  ------------------->  decks/<DECK>/deck.json
   POST /api/session ----------------->  build prompt + tools  ------> mint ephemeral secret
   <-- ephemeral secret ---------------
   ===== WebRTC: mic up, voice down, JSON events on a data channel =====> Realtime model
@@ -54,7 +54,21 @@ Browser (React)                        FastAPI                        OpenAI
 
 - **The API key stays on the server.** The browser gets a secret that expires in two minutes and already carries the instructions, tool schema, and audio settings.
 - **Audio never touches the backend**, so it adds nothing to voice latency.
-- **One deck file drives everything.** `backend/app/deck.json` is rendered by the UI, compiled into the system prompt, and used as the list of facts the agent may state.
+- **One deck file drives everything.** `backend/decks/<name>/deck.json` is rendered by the UI, compiled into the system prompt, and used as the list of facts the agent may state.
+
+### Decks
+
+A deck carries both what is presented and how. Besides the slides, each `deck.json` has:
+
+- `name`, and optional `tagline`, `badge`, `pronunciation` and `disclaimer`: shown in the UI and used in the prompt.
+- `agent`: who the agent is and who it is talking to.
+  - `role`: the opening of the prompt, e.g. "You are a medical science liaison presenting Cardiovex to a physician over a voice call."
+  - `audience`: how the agent refers to the listener ("physician"); used in the rules, tool descriptions, greeting and closing.
+  - `style`: tone lines added before the general voice rules.
+  - `out_of_scope` and `refusal_line`: topics to decline and the exact words to decline with.
+  - `guardrails`: extra rules added to the general ones (facts only, no role changes).
+
+The prompt template in `prompt.py` holds only the rules that apply to every deck. To switch decks, add a folder under `backend/decks/` and set `DECK=<folder>` in `.env`; no code changes. The deck is validated at startup, so a missing field fails fast.
 
 ### Slides are made of blocks
 
@@ -110,9 +124,10 @@ Turn detection runs on OpenAI's side (semantic VAD with `interrupt_response`). W
 ## Layout
 
 ```
+backend/decks/
+  cardiovex/deck.json   the six slides and how the agent presents them
 backend/app/
-  deck.json      the six slides
-  deck.py        load and validate
+  deck.py        pick (DECK), load and validate
   prompt.py      system instructions and tool schema, built from the deck
   realtime.py    session config, ephemeral secret
   routes.py      /api endpoints, rate limit, event log
@@ -143,4 +158,4 @@ backend/scripts/simulate.py     typed, text-only run against the real API
 - Automated evaluation: replay the utterances above as audio or text and score slide, block, and factual accuracy.
 - Retrieval over real prescribing information instead of a fixed fact list.
 - Server-side session relay for audit logging and claim checking.
-- Deck authoring and multiple decks.
+- Deck authoring, and choosing a deck per call instead of per server.

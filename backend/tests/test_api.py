@@ -1,13 +1,14 @@
 import copy
+import json
 from dataclasses import replace
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app import realtime, routes
-from app.deck import load_deck, validate_deck
+from app.deck import load_deck, read_deck, validate_deck
 from app.main import app
-from app.prompt import REFUSAL_LINE, build_instructions, build_tools
+from app.prompt import build_instructions, build_tools
 from app.settings import get_settings
 
 
@@ -58,6 +59,59 @@ def test_deck_validation_rejects_duplicate_ids():
         validate_deck(deck)
 
 
+def test_deck_validation_rejects_missing_agent_fields():
+    deck = copy.deepcopy(load_deck())
+    deck["agent"]["refusal_line"] = ""
+    with pytest.raises(ValueError):
+        validate_deck(deck)
+    del deck["agent"]
+    with pytest.raises(ValueError):
+        validate_deck(deck)
+
+
+def other_deck() -> dict:
+    """The Cardiovex slides with a different agent, standing in for a new deck."""
+    deck = copy.deepcopy(load_deck())
+    deck["id"] = "other"
+    deck["name"] = "Northwind"
+    del deck["pronunciation"]
+    deck["agent"] = {
+        "role": "You are a founder pitching Northwind to an investor over a voice call.",
+        "audience": "investor",
+        "style": ["Confident and concise."],
+        "out_of_scope": ["valuation"],
+        "refusal_line": "I can't speak to that here.",
+    }
+    return deck
+
+
+def test_prompt_and_tools_follow_the_deck_agent():
+    deck = other_deck()
+    prompt = build_instructions(deck)
+    tools = json.dumps(build_tools(deck))
+    assert prompt.startswith("# Role and goal\nYou are a founder pitching Northwind")
+    assert "# When the investor speaks" in prompt
+    assert "- Confident and concise." in prompt
+    assert 'Valuation, or anything the facts do not cover: say "I can\'t speak to that here."' in prompt
+    assert "Pronounce" not in prompt
+    assert "the investor's question" in tools
+    # The stand-in reuses Cardiovex slides, so leave out the facts section.
+    rules = prompt.split("# The deck")[0] + prompt.split("# Guardrails")[1]
+    for text in (rules, tools):
+        for word in ("physician", "clinician", "Cardiovex", "Medical Information", "off-label"):
+            assert word not in text
+
+
+def test_deck_setting_picks_the_folder(tmp_path):
+    (tmp_path / "other").mkdir()
+    (tmp_path / "other" / "deck.json").write_text(json.dumps(other_deck()))
+    assert read_deck(tmp_path, "other")["name"] == "Northwind"
+    with pytest.raises(ValueError, match="available: other"):
+        read_deck(tmp_path, "missing")
+    with pytest.raises(ValueError):
+        read_deck(tmp_path, "../other")
+
+
 def test_prompt_contains_every_block_and_fact():
     deck = load_deck()
     prompt = build_instructions(deck)
@@ -65,7 +119,7 @@ def test_prompt_contains_every_block_and_fact():
         assert block["id"] in prompt
         for fact in block["facts"]:
             assert fact in prompt
-    assert REFUSAL_LINE in prompt
+    assert deck["agent"]["refusal_line"] in prompt
 
 
 def test_tool_schema_lists_every_id():
@@ -89,7 +143,8 @@ def test_session_config_shape(settings):
 def test_get_deck(client):
     response = client.get("/api/deck")
     assert response.status_code == 200
-    assert response.json()["product"] == "Cardiovex"
+    assert response.json()["name"] == "Cardiovex"
+    assert response.json()["agent"]["audience"] == "physician"
 
 
 def test_create_session_returns_ephemeral_secret_only(client):

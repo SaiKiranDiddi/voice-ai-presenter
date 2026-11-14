@@ -289,7 +289,7 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
     window.clearTimeout(st.prefetchTimer)
     st.prefetchTimer = undefined
     if (st.requested > st.cursor) {
-      // The model generated it but the physician never heard it: remove it
+      // The model generated it but the listener never heard it: remove it
       // from the conversation so the model does not believe it was said.
       for (const id of st.prefetchedItems) send({ type: 'conversation.item.delete', item_id: id })
     }
@@ -306,11 +306,12 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
       const blocks = flatBlocks()
       st.requested = index
       st.requestedDone = false
+      const audience = deckRef.current?.agent.audience ?? 'listener'
 
       if (index >= blocks.length) {
         st.turn = 'closing'
         sendSystemNote(
-          'CLOSE: The deck is finished. Thank the physician in one sentence and ask whether they have any questions.',
+          `CLOSE: The deck is finished. Thank the ${audience} in one sentence and ask whether they have any questions.`,
         )
       } else {
         st.turn = 'block'
@@ -318,7 +319,7 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
         const agenda = (deckRef.current?.slides ?? []).map((sl) => sl.nav.toLowerCase()).join(', ')
         const startsSlide = slide.blocks[0].id === block.id
         const opening = {
-          greeting: `First say one sentence that greets the physician and names what you will cover (${agenda}), and one short sentence that they can interrupt with questions at any time. Then present this:`,
+          greeting: `First say one sentence that greets the ${audience} and names what you will cover (${agenda}), and one short sentence that they can interrupt with questions at any time. Then present this:`,
           resume: 'Say "Back to the presentation." and then present this:',
           jump: 'Present this now:',
           next: startsSlide
@@ -538,7 +539,7 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
     if (st.responseActive) return
     if (st.userSpeaking) {
       // The user is mid-sentence; their turn decides what happens next.
-      dropPending('the physician is speaking')
+      dropPending('the user is speaking')
       return
     }
     if (st.turnHasAudio && !st.audioDone) return
@@ -552,7 +553,7 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
       const st = s.current
       cancelResumeTimer()
       resetChain()
-      dropPending('cancelled by the physician')
+      dropPending('cancelled by the user')
       if (st.audioPlaying || st.turnHasAudio) send({ type: 'output_audio_buffer.clear' })
       st.audioPlaying = false
       const then = next ?? (() => setState('listening'))
@@ -596,7 +597,7 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
             markAgentInterrupted()
             log('interruption')
           }
-          dropPending('the physician interrupted')
+          dropPending('the user interrupted')
           setState('listening')
           upsertLine(event.item_id, 'user', (line) => ({ ...line, text: line.text || '…' }))
           break

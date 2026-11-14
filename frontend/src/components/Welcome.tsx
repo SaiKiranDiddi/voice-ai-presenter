@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { Deck } from '../types'
+import { DEFAULT_TAGLINE, type Deck } from '../types'
 import { MicIcon, PlayIcon, PulseIcon } from './Icons'
 import { SlideCanvas } from './SlideView'
 
@@ -18,9 +18,9 @@ export function Welcome({ deck, maxMinutes, connecting, error, accessField, onSt
   return (
     <main className="welcome">
       <div className="welcome-copy">
-        <span className="welcome-eyebrow">Voice-led detail aid</span>
+        <span className="welcome-eyebrow">{deck.tagline ?? DEFAULT_TAGLINE}</span>
         <h1 className="welcome-title">
-          {deck.product}, <em>presented by voice.</em>
+          {deck.name}, <em>presented by voice.</em>
         </h1>
         <p className="welcome-lead">
           An AI presenter walks you through {deck.slides.length} slides in about two minutes. Ask anything along the

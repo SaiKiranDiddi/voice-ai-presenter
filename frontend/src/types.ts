@@ -51,13 +51,26 @@ export interface Slide {
   blocks: Block[]
 }
 
+/** How the agent presents this deck. The backend uses the rest of this section for the prompt. */
+export interface DeckAgent {
+  /** Who is listening, as the agent refers to them: "physician", "investor". */
+  audience: string
+}
+
 export interface Deck {
   id: string
-  product: string
-  disclaimer: string
-  medical_information: string
+  /** What is being presented; shown as the brand in the top bar and on slides. */
+  name: string
+  /** Short line under the name, e.g. "Voice-led detail aid". */
+  tagline?: string
+  /** Small pill in the top bar, e.g. "Fictional product, demo only". Hidden when absent. */
+  badge?: string
+  disclaimer?: string
+  agent: DeckAgent
   slides: Slide[]
 }
+
+export const DEFAULT_TAGLINE = 'Voice-led presentation'
 
 export type FocusMode = 'presenting' | 'answering' | 'manual'
 
