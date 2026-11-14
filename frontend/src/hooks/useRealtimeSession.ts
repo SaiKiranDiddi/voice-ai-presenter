@@ -106,6 +106,11 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
           setError,
           setLatency: setLatencyMs,
           log,
+          endCall: () => {
+            if (live.current !== s) return
+            setNotice('The presentation is finished, so the call ended. Start again to replay it.')
+            teardown('ended')
+          },
         }),
         call: null,
         mic: null,

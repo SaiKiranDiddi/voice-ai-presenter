@@ -48,6 +48,7 @@ The live demo runs on Render's free tier from `render.yaml`: one Docker web serv
 | Press **Stop talking** | Audio stops and it waits for you |
 | Press **Pause**, then **Resume** | Speech stops and the microphone is muted; Resume presents the same block again |
 | "Is this a real drug?" | Says it is fictional |
+| Stay quiet after the closing line | After 15 seconds the call ends on its own; a question first keeps it open, and the 15 seconds start again after the answer |
 
 ## Architecture
 
@@ -101,6 +102,7 @@ State transitions:
 | `present_slide` or a thumbnail click | Cursor moves to that slide's first block; presenting continues from there |
 | Stop talking | Speech is cancelled; nothing resumes until the user speaks or clicks |
 | Pause | Speech is cancelled, microphone muted, position held; Resume presents the cursor block again |
+| Closing line, or an answer after it, finishes | Wait 15 seconds; if the user is silent, the call ends. Speech, a slide click, Pause or Stop talking cancels the wait |
 
 A turn counts as finished only when the model has stopped generating and the audio has stopped playing. The model generates faster than it speaks, so acting on generation alone would change the slide mid-sentence.
 
