@@ -25,6 +25,14 @@ Tests: `cd backend && ../.venv/bin/python -m pytest`
 
 Docker: `docker build -t presenter . && docker run -p 8000:8000 --env-file .env presenter`
 
+### Deploy
+
+The live demo runs on Render's free tier from `render.yaml`: one Docker web service that builds the frontend and serves it from FastAPI. In Render, choose **New > Blueprint**, pick this repository, and fill in the two secrets it asks for: `OPENAI_API_KEY` and `DEMO_ACCESS_CODE` (visitors enter the code before a call starts, so a public URL can't spend the key). Every push to `main` redeploys.
+
+- Settings such as `REALTIME_MODEL`, `DECK` and the call limits can be changed in the service's Environment tab; **Save and deploy** applies them. `VITE_VOICE_VISUAL` is read when the frontend is built, so it needs **Save, rebuild, and deploy**.
+- A free service sleeps after 15 minutes without traffic and takes about a minute to wake. A free uptime monitor requesting `/api/health` every few minutes keeps it awake.
+- The free instance (0.1 CPU, 512 MB) is enough: the server uses about 65 MB, and call audio goes from the browser straight to OpenAI, never through it. Session logs are lost when the service restarts.
+
 ## What to try
 
 | Do or say | Expect |

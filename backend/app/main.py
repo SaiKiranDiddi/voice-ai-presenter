@@ -1,6 +1,7 @@
 """FastAPI app. Serves the API and, when built, the frontend from one origin."""
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -10,6 +11,8 @@ from .settings import get_settings
 
 app = FastAPI(title="Voice slide presenter")
 app.include_router(router)
+# The JS bundle is ~250 KB raw and ~80 KB compressed; it matters on a small instance.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 load_deck()  # fail fast on a malformed deck
 

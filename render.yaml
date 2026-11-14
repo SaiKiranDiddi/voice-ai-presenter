@@ -1,0 +1,22 @@
+# Render Blueprint: one free Docker web service. See the Deploy section of the README.
+services:
+  - type: web
+    name: voice-slide-presenter
+    runtime: docker
+    plan: free
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      # Secrets: Render asks for these when the Blueprint is created.
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DEMO_ACCESS_CODE
+        sync: false
+      - key: REALTIME_MODEL
+        value: gpt-realtime
+      - key: DECK
+        value: cardiovex
+      # Read at build time; Render passes service variables to the Docker build as build args.
+      - key: VITE_VOICE_VISUAL
+        value: orb
