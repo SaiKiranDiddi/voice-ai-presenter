@@ -198,7 +198,12 @@ export default function App() {
           </div>
 
           <aside className="panel">
-            <VoiceStatus state={session.state} latencyMs={session.latencyMs} getAnalysers={session.getAnalysers} />
+            <VoiceStatus
+              state={session.state}
+              answering={view.mode === 'answering'}
+              latencyMs={session.latencyMs}
+              getAnalysers={session.getAnalysers}
+            />
 
             {canStart && (
               <form

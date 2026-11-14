@@ -151,7 +151,7 @@
   box-shadow: var(--shadow-2);
 }
 
-/* The voice card: the waveform is the centrepiece. */
+/* The voice card: the voice visual (orb or waveform) is the centrepiece. */
 .voice {
   display: grid;
   gap: 12px;
@@ -176,6 +176,208 @@
   display: block;
   width: 100%;
   height: 92px;
+}
+
+/*
+ * The orb. Colours are registered so the gradients cross-fade between
+ * states; --level (presenter) and --mic (microphone) are written every
+ * frame by VoiceOrb.tsx.
+ */
+@property --orb-hi {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #eef1f5;
+}
+
+@property --orb-mid {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #d3dae3;
+}
+
+@property --orb-deep {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #aab4c1;
+}
+
+@property --orb-glow {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: rgba(195, 203, 214, 0);
+}
+
+@property --orb-breath {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+
+.orb-stage {
+  display: grid;
+  place-items: center;
+  height: 156px;
+}
+
+.orb {
+  --level: 0;
+  --mic: 0;
+  --glow-base: 0;
+  --swirl: 0;
+  --ring-base: 0;
+  position: relative;
+  width: 120px;
+  height: 120px;
+  transition:
+    --orb-hi 0.35s var(--ease-out),
+    --orb-mid 0.35s var(--ease-out),
+    --orb-deep 0.35s var(--ease-out),
+    --orb-glow 0.35s var(--ease-out);
+}
+
+.orb-glow,
+.orb-ring,
+.orb-core {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+/* Larger than the core so the halo shows around it; widens with the voice. */
+.orb-glow {
+  inset: -24px;
+  background: radial-gradient(circle, var(--orb-glow) 50%, transparent 72%);
+  filter: blur(12px);
+  opacity: min(1, calc(var(--glow-base) + var(--level) * 0.7));
+  transform: scale(calc(1.15 + var(--level) * 0.22));
+  transition: opacity 0.35s var(--ease-out);
+}
+
+.orb-ring {
+  inset: -9px;
+  border: 1.5px solid var(--orb-mid);
+  opacity: min(0.85, calc(var(--ring-base) + var(--mic) * 2.4));
+  transform: scale(calc(1 + var(--mic) * 0.22));
+  transition: opacity 0.35s var(--ease-out);
+}
+
+.orb-core {
+  overflow: hidden;
+  background: radial-gradient(circle at 32% 28%, var(--orb-hi) 0%, var(--orb-mid) 48%, var(--orb-deep) 100%);
+  box-shadow:
+    inset 0 -8px 18px rgba(14, 26, 43, 0.12),
+    0 6px 18px rgba(14, 26, 43, 0.08);
+  transform: scale(calc(var(--orb-breath) * (1 + var(--level) * 0.18)));
+}
+
+.orb-swirl {
+  position: absolute;
+  inset: -25%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    color-mix(in srgb, var(--orb-hi) 70%, transparent) 70deg,
+    transparent 150deg,
+    color-mix(in srgb, var(--orb-deep) 45%, transparent) 230deg,
+    transparent 320deg
+  );
+  filter: blur(6px);
+  mix-blend-mode: soft-light;
+  opacity: var(--swirl);
+  animation: orb-spin 7s linear infinite;
+  transition: opacity 0.4s var(--ease-out);
+}
+
+.orb-swirl--slow {
+  animation-duration: 11s;
+  animation-direction: reverse;
+}
+
+.orb-shine {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 24%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 34%);
+}
+
+/* Teal: the presenter at work. */
+.orb--speaking,
+.orb--thinking,
+.orb--connecting {
+  --orb-hi: #8fdcd6;
+  --orb-mid: var(--accent-bright);
+  --orb-deep: var(--accent-strong);
+  --orb-glow: rgba(23, 163, 160, 0.4);
+  --glow-base: 0.3;
+}
+
+.orb--speaking {
+  --swirl: 0.35;
+}
+
+.orb--thinking,
+.orb--connecting {
+  --swirl: 1;
+}
+
+/* Listening: the same presenter, at rest. */
+.orb--listening {
+  --orb-hi: #d6eeed;
+  --orb-mid: #8cc4c4;
+  --orb-deep: #4c8d91;
+  --orb-glow: rgba(23, 163, 160, 0.2);
+  --glow-base: 0.3;
+  --ring-base: 0.18;
+  animation: orb-breathe 4.2s ease-in-out infinite;
+}
+
+/* Amber: answering a question from a source. */
+.orb.is-answering:is(.orb--speaking, .orb--thinking, .orb--connecting) {
+  --orb-hi: #f8cd8c;
+  --orb-mid: var(--answer-bright);
+  --orb-deep: var(--answer-strong);
+  --orb-glow: rgba(224, 138, 42, 0.36);
+}
+
+.orb.is-answering.orb--listening {
+  --orb-hi: #f9e6c8;
+  --orb-mid: #dcae78;
+  --orb-deep: #a8702f;
+  --orb-glow: rgba(224, 138, 42, 0.18);
+}
+
+.orb--error {
+  --orb-hi: #f4c3bd;
+  --orb-mid: #d9564d;
+  --orb-deep: var(--danger);
+  --orb-glow: rgba(179, 38, 30, 0.25);
+  --glow-base: 0.3;
+}
+
+@keyframes orb-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes orb-breathe {
+  0%,
+  100% {
+    --orb-breath: 1;
+  }
+  50% {
+    --orb-breath: 1.035;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orb-swirl {
+    display: none;
+  }
+
+  .orb {
+    animation: none;
+  }
 }
 
 .voice-text {

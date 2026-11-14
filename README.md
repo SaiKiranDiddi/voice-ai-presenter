@@ -90,7 +90,11 @@ Timing the hand-over needs to know when a block's audio ends. Output audio is 50
 - **Welcome screen** until the first call connects, then the workspace: the slide, a filmstrip, and a side panel.
 - **The slide scales like a real slide.** Every size inside it is in container units, so the same component draws the stage, the filmstrip thumbnails, and the welcome preview.
 - **The highlighted block says why it is highlighted**: teal "Presenting" while the agent narrates, amber "Source for this answer" when it answers a question.
-- **The waveform is live.** It follows the agent's audio while it speaks and the microphone while it listens, so the user can see they are heard. The analysers are display only.
+- **The voice visual is live**, in one of two styles chosen at build time with `VITE_VOICE_VISUAL` in `.env` (rebuild after changing it; for Docker, `--build-arg VITE_VOICE_VISUAL=orb`):
+  - `wave` (default): a bar waveform that follows the agent's audio while it speaks and the microphone while it listens.
+  - `orb`: an orb for the presenter. It swells with the agent's voice, breathes while listening with a ring that follows the microphone, and swirls while thinking. Teal while presenting, amber while answering from a source, grey when inactive, red on error.
+
+  Either way the user can see they are heard. The analysers are display only.
 - Plain CSS in `frontend/src/styles/`, Inter bundled with the app, no UI library. Motion respects `prefers-reduced-motion`.
 
 ### Interruption
@@ -118,7 +122,8 @@ frontend/src/
   components/SlideView.tsx      the slide: layouts, transitions, highlight
   components/Blocks.tsx         one renderer per block type
   components/Panel.tsx          voice card, controls, transcript
-  components/VoiceVisual.tsx    live waveform
+  components/VoiceVisual.tsx    live waveform (VITE_VOICE_VISUAL=wave)
+  components/VoiceOrb.tsx       live orb (VITE_VOICE_VISUAL=orb)
   components/Welcome.tsx        start screen
   components/Icons.tsx          inline icons
   styles/                       tokens, slide, panel

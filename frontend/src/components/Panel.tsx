@@ -2,7 +2,11 @@ import { useEffect, useRef } from 'react'
 import type { Analysers } from '../hooks/useRealtimeSession'
 import type { AgentState, TranscriptLine } from '../types'
 import { MicIcon, MicOffIcon, PauseIcon, PhoneOffIcon, PlayIcon, StopIcon } from './Icons'
+import { VoiceOrb } from './VoiceOrb'
 import { VoiceVisual } from './VoiceVisual'
+
+/** Which voice visual to show, chosen at build time: VITE_VOICE_VISUAL=orb or wave (the default). */
+const USE_ORB = import.meta.env.VITE_VOICE_VISUAL === 'orb'
 
 const STATE_LABEL: Record<AgentState, string> = {
   idle: 'Ready',
@@ -28,16 +32,22 @@ const STATE_HINT: Record<AgentState, string> = {
 
 export function VoiceStatus({
   state,
+  answering,
   latencyMs,
   getAnalysers,
 }: {
   state: AgentState
+  answering: boolean
   latencyMs: number | null
   getAnalysers: () => Analysers
 }) {
   return (
     <div className={`voice voice--${state}`}>
-      <VoiceVisual state={state} getAnalysers={getAnalysers} />
+      {USE_ORB ? (
+        <VoiceOrb state={state} answering={answering} getAnalysers={getAnalysers} />
+      ) : (
+        <VoiceVisual state={state} getAnalysers={getAnalysers} />
+      )}
       <div className="voice-text">
         <p className="voice-label" role="status">
           <span className="voice-dot" aria-hidden="true" />

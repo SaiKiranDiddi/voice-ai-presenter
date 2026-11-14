@@ -22,6 +22,8 @@
 
   /* Amber: answering from a source */
   --answer: #b4530a;
+  --answer-strong: #8f4108;
+  --answer-bright: #e08a2a;
   --answer-soft: #fdf0dd;
 
   --danger: #b3261e;
