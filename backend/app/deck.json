@@ -1,0 +1,369 @@
+{
+  "id": "cardiovex-detail-aid",
+  "product": "Cardiovex",
+  "pronunciation": "CAR-dee-oh-vex",
+  "disclaimer": "Cardiovex, the ASCEND-HTN trial and all data shown are fictional and exist only for this demo.",
+  "medical_information": "Cardiovex Medical Information, 1-800-555-0142",
+  "slides": [
+    {
+      "id": "intro",
+      "title": "Resistant hypertension: the unmet need",
+      "nav": "Unmet need",
+      "subtitle": "Introducing Cardiovex",
+      "layout": "hero",
+      "blocks": [
+        {
+          "id": "intro.need",
+          "type": "stat",
+          "content": {
+            "value": "1 in 5",
+            "label": "treated patients still have uncontrolled blood pressure on three or more medicines",
+            "sub": "Resistant hypertension"
+          },
+          "talking_point": "About one in five treated patients remain above target despite three or more antihypertensives. Excess aldosterone is a common driver.",
+          "facts": [
+            "Roughly 1 in 5 patients treated for hypertension remain uncontrolled on three or more antihypertensive medicines.",
+            "Excess aldosterone is a common driver of resistant hypertension."
+          ]
+        },
+        {
+          "id": "intro.what",
+          "type": "callout",
+          "content": {
+            "title": "What is Cardiovex?",
+            "text": "A once-daily oral aldosterone synthase inhibitor.",
+            "bullets": [
+              "Add-on therapy for adults with resistant hypertension",
+              "One tablet, once a day"
+            ]
+          },
+          "talking_point": "Cardiovex is a once-daily oral aldosterone synthase inhibitor, used as add-on therapy for adults with resistant hypertension.",
+          "facts": [
+            "Cardiovex is a once-daily oral aldosterone synthase inhibitor.",
+            "Cardiovex is indicated as add-on therapy for adults with resistant hypertension, meaning blood pressure uncontrolled on three or more antihypertensives including a diuretic.",
+            "Cardiovex is not indicated for children or for use in pregnancy."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "moa",
+      "title": "Mechanism of action",
+      "nav": "Mechanism",
+      "subtitle": "Lowering aldosterone at its source",
+      "layout": "flow",
+      "blocks": [
+        {
+          "id": "moa.pathway",
+          "type": "steps",
+          "content": {
+            "steps": [
+              {
+                "title": "Inhibit",
+                "text": "Cardiovex blocks aldosterone synthase (CYP11B2) in the adrenal gland"
+              },
+              {
+                "title": "Reduce",
+                "text": "Less aldosterone is produced, so the kidney retains less sodium and water"
+              },
+              {
+                "title": "Lower",
+                "text": "Blood volume falls and blood pressure comes down"
+              }
+            ]
+          },
+          "talking_point": "Cardiovex blocks aldosterone synthase in the adrenal gland. Less aldosterone means less sodium and water retention, so blood pressure falls.",
+          "facts": [
+            "Cardiovex inhibits aldosterone synthase, the enzyme CYP11B2, in the adrenal gland.",
+            "Lower aldosterone reduces sodium and water retention by the kidney, which lowers blood volume and blood pressure.",
+            "Unlike mineralocorticoid receptor antagonists, which block the aldosterone receptor, Cardiovex reduces aldosterone production itself."
+          ]
+        },
+        {
+          "id": "moa.selectivity",
+          "type": "callout",
+          "content": {
+            "title": "Selective by design",
+            "text": "Targets aldosterone synthesis while leaving cortisol synthesis alone.",
+            "bullets": [
+              "No change in cortisol levels versus placebo in ASCEND-HTN"
+            ]
+          },
+          "talking_point": "It is selective for aldosterone synthase, and cortisol levels were unchanged versus placebo in the pivotal trial.",
+          "facts": [
+            "Cardiovex is selective for aldosterone synthase (CYP11B2) over the cortisol-producing enzyme CYP11B1.",
+            "In ASCEND-HTN, cortisol levels did not differ between Cardiovex and placebo."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "efficacy",
+      "title": "Efficacy",
+      "nav": "Efficacy",
+      "subtitle": "ASCEND-HTN pivotal trial, week 12",
+      "layout": "chart-with-stats",
+      "blocks": [
+        {
+          "id": "efficacy.sbp_chart",
+          "type": "chart",
+          "content": {
+            "title": "Change in systolic blood pressure at week 12",
+            "unit": "mmHg",
+            "bars": [
+              {
+                "label": "Cardiovex",
+                "value": -15.2,
+                "emphasis": true
+              },
+              {
+                "label": "Placebo",
+                "value": -5.1
+              }
+            ],
+            "footnote": "Primary endpoint. Difference -10.1 mmHg, p < 0.001."
+          },
+          "talking_point": "Systolic pressure fell 15.2 millimetres of mercury on Cardiovex versus 5.1 on placebo at week 12, a difference of about 10.",
+          "facts": [
+            "Primary endpoint: mean change in seated systolic blood pressure at week 12 was -15.2 mmHg with Cardiovex versus -5.1 mmHg with placebo.",
+            "The placebo-adjusted difference was -10.1 mmHg, p < 0.001.",
+            "Blood pressure reductions were seen from week 2 onward."
+          ]
+        },
+        {
+          "id": "efficacy.control_rate",
+          "type": "stat",
+          "content": {
+            "value": "48%",
+            "label": "reached target blood pressure below 130/80 mmHg",
+            "sub": "vs 21% on placebo"
+          },
+          "talking_point": "Nearly half of patients, 48 percent, reached target below 130 over 80, compared with 21 percent on placebo.",
+          "facts": [
+            "At week 12, 48% of patients on Cardiovex reached blood pressure below 130/80 mmHg versus 21% on placebo."
+          ]
+        },
+        {
+          "id": "efficacy.trial",
+          "type": "callout",
+          "content": {
+            "title": "Study design",
+            "text": "Phase 3, randomised, double-blind, placebo-controlled.",
+            "bullets": [
+              "812 adults",
+              "12 weeks",
+              "Added to 3 or more antihypertensives"
+            ]
+          },
+          "talking_point": "ASCEND-HTN was a phase 3 randomised double-blind trial in 812 adults already on three or more antihypertensives.",
+          "facts": [
+            "ASCEND-HTN was a phase 3, randomised, double-blind, placebo-controlled trial.",
+            "It enrolled 812 adults with resistant hypertension on three or more antihypertensives including a diuretic.",
+            "Treatment lasted 12 weeks. Longer-term outcome data are not yet available."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "safety",
+      "title": "Safety and tolerability",
+      "nav": "Safety",
+      "subtitle": "ASCEND-HTN, 12 weeks",
+      "layout": "table-with-side",
+      "blocks": [
+        {
+          "id": "safety.ae_table",
+          "type": "table",
+          "content": {
+            "columns": [
+              "Adverse event",
+              "Cardiovex",
+              "Placebo"
+            ],
+            "rows": [
+              [
+                "Headache",
+                "6.1%",
+                "5.4%"
+              ],
+              [
+                "Dizziness",
+                "4.8%",
+                "3.1%"
+              ],
+              [
+                "Hyperkalaemia",
+                "3.9%",
+                "1.2%"
+              ],
+              [
+                "Fatigue",
+                "3.2%",
+                "2.9%"
+              ]
+            ],
+            "footnote": "Events reported in 3% or more of patients on Cardiovex."
+          },
+          "talking_point": "Most adverse events were close to placebo. Headache was the most common. Hyperkalaemia was more frequent on Cardiovex, 3.9 versus 1.2 percent.",
+          "facts": [
+            "Headache: 6.1% with Cardiovex versus 5.4% with placebo.",
+            "Dizziness: 4.8% versus 3.1%.",
+            "Hyperkalaemia: 3.9% versus 1.2%.",
+            "Fatigue: 3.2% versus 2.9%.",
+            "No cases of adrenal insufficiency were reported in ASCEND-HTN."
+          ]
+        },
+        {
+          "id": "safety.discontinuation",
+          "type": "stat",
+          "content": {
+            "value": "2.3%",
+            "label": "discontinued because of adverse events",
+            "sub": "vs 1.9% on placebo"
+          },
+          "talking_point": "Discontinuation due to adverse events was low, 2.3 percent versus 1.9 on placebo.",
+          "facts": [
+            "Discontinuation due to adverse events: 2.3% with Cardiovex versus 1.9% with placebo."
+          ]
+        },
+        {
+          "id": "safety.monitoring",
+          "type": "callout",
+          "content": {
+            "title": "Monitoring",
+            "text": "Check serum potassium and renal function.",
+            "bullets": [
+              "Before starting, at week 2, then periodically",
+              "Not recommended if potassium is above 5.0 mmol/L or eGFR is below 30"
+            ]
+          },
+          "talking_point": "Check potassium and renal function before starting, at week two and periodically. It is not recommended with potassium above 5 or eGFR below 30.",
+          "facts": [
+            "Check serum potassium and renal function before starting Cardiovex, at week 2, and periodically thereafter.",
+            "Cardiovex is not recommended in patients with serum potassium above 5.0 mmol/L or eGFR below 30 mL/min/1.73m2.",
+            "Use caution with potassium supplements and potassium-sparing diuretics."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dosing",
+      "title": "Dosing and administration",
+      "nav": "Dosing",
+      "subtitle": "One tablet, once daily",
+      "layout": "flow",
+      "blocks": [
+        {
+          "id": "dosing.schedule",
+          "type": "steps",
+          "content": {
+            "steps": [
+              {
+                "title": "Start",
+                "text": "10 mg once daily"
+              },
+              {
+                "title": "Week 2",
+                "text": "Check serum potassium"
+              },
+              {
+                "title": "Week 4",
+                "text": "Increase to 20 mg once daily if blood pressure is still above target"
+              }
+            ]
+          },
+          "talking_point": "Start at 10 milligrams once daily, check potassium at week two, and increase to 20 milligrams at week four if pressure is still above target.",
+          "facts": [
+            "Starting dose is 10 mg orally once daily.",
+            "Check serum potassium at week 2.",
+            "The dose may be increased to 20 mg once daily at week 4 if blood pressure remains above target.",
+            "The maximum dose is 20 mg once daily."
+          ]
+        },
+        {
+          "id": "dosing.practical",
+          "type": "callout",
+          "content": {
+            "title": "Practical points",
+            "text": "Fits alongside existing therapy.",
+            "bullets": [
+              "With or without food",
+              "Missed dose: skip it, do not double up",
+              "No adjustment in mild to moderate hepatic impairment"
+            ]
+          },
+          "talking_point": "It can be taken with or without food. A missed dose is skipped, not doubled. No adjustment is needed in mild to moderate hepatic impairment.",
+          "facts": [
+            "Cardiovex can be taken with or without food, at the same time each day.",
+            "If a dose is missed, skip it and take the next dose at the usual time. Do not double the dose.",
+            "No dose adjustment is needed in mild to moderate hepatic impairment. It has not been studied in severe hepatic impairment.",
+            "Continue the patient's existing antihypertensive medicines."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "summary",
+      "title": "Who it is for, and key takeaways",
+      "nav": "Summary",
+      "subtitle": "Summary",
+      "layout": "cards",
+      "blocks": [
+        {
+          "id": "summary.patient",
+          "type": "callout",
+          "content": {
+            "title": "The right patient",
+            "text": "Adults with resistant hypertension.",
+            "bullets": [
+              "Uncontrolled on 3 or more agents including a diuretic",
+              "eGFR 30 or above",
+              "Potassium 5.0 mmol/L or below"
+            ]
+          },
+          "talking_point": "The right patient is an adult still uncontrolled on three or more agents including a diuretic, with eGFR of at least 30 and potassium no higher than 5.",
+          "facts": [
+            "Appropriate patients are adults with blood pressure uncontrolled on three or more antihypertensives including a diuretic.",
+            "Patients should have eGFR of 30 mL/min/1.73m2 or above and serum potassium of 5.0 mmol/L or below."
+          ]
+        },
+        {
+          "id": "summary.takeaways",
+          "type": "callout",
+          "content": {
+            "title": "Key takeaways",
+            "text": "What to remember.",
+            "bullets": [
+              "10.1 mmHg greater systolic reduction than placebo",
+              "48% at target by week 12",
+              "Once daily, with potassium monitoring"
+            ]
+          },
+          "talking_point": "Three takeaways: about 10 millimetres greater systolic reduction than placebo, nearly half of patients at target by week 12, and once-daily dosing with potassium monitoring.",
+          "facts": [
+            "Cardiovex gave a 10.1 mmHg greater reduction in systolic blood pressure than placebo at week 12.",
+            "48% of patients reached target blood pressure by week 12.",
+            "Dosing is once daily, with potassium monitoring."
+          ]
+        },
+        {
+          "id": "summary.next",
+          "type": "callout",
+          "content": {
+            "title": "More information",
+            "text": "Cardiovex Medical Information",
+            "bullets": [
+              "1-800-555-0142",
+              "See full prescribing information"
+            ]
+          },
+          "talking_point": "For anything beyond this material, Medical Information can help, and the full prescribing information has the details.",
+          "facts": [
+            "Questions beyond this material can be directed to Cardiovex Medical Information at 1-800-555-0142.",
+            "Refer to the full prescribing information before prescribing."
+          ]
+        }
+      ]
+    }
+  ]
+}

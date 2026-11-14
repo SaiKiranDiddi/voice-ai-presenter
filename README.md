@@ -1,0 +1,121 @@
+# Voice-led slide presenter
+
+An AI voice agent that presents a six-slide deck, jumps to the right slide when you ask a question, and stops talking the moment you interrupt.
+
+The deck is a detail aid for **Cardiovex, a fictional drug**, presented to a physician. The agent answers only from approved content, and every answer highlights the part of the slide it came from.
+
+## Run it
+
+Needs Python 3.11+, Node 20+, and an OpenAI API key with Realtime access.
+
+```bash
+cp .env.example .env          # then put your key in OPENAI_API_KEY
+python -m venv .venv && .venv/bin/pip install -r backend/requirements.txt
+cd frontend && npm install && npm run build && cd ..
+cd backend && ../.venv/bin/uvicorn app.main:app --port 8000
+```
+
+Open http://localhost:8000, press **Start presentation**, and allow the microphone. Headphones give the cleanest interruption.
+
+For frontend development, run `npm run dev` in `frontend/` alongside the backend; Vite proxies `/api` to port 8000.
+
+Tests: `cd backend && ../.venv/bin/python -m pytest`
+
+Docker: `docker build -t presenter . && docker run -p 8000:8000 --env-file .env presenter`
+
+## What to try
+
+| Do or say | Expect |
+|---|---|
+| Nothing | The agent greets you and presents every block of every slide without prompting |
+| "What are the side effects?" mid-sentence | Speech stops, the Safety slide appears, the adverse-event table is highlighted |
+| Stay quiet after the answer | After five seconds it returns to the block you interrupted and carries on |
+| "Continue" after an answer | Same, immediately |
+| "How do I dose it?" | Jumps to Dosing |
+| "Is it better than drug X?" / "What does it cost?" | Polite refusal, pointer to Medical Information, no slide change |
+| "Go back to slide two" | Presents the Mechanism slide from its start and continues from there |
+| Click a slide thumbnail | The agent stops and presents that slide straight away |
+| Press **Stop talking** | Audio stops and it waits for you |
+| "Is this a real drug?" | Says it is fictional |
+
+## Architecture
+
+```
+Browser (React)                        FastAPI                        OpenAI
+  GET  /api/deck  ------------------->  deck.json
+  POST /api/session ----------------->  build prompt + tools  ------> mint ephemeral secret
+  <-- ephemeral secret ---------------
+  ===== WebRTC: mic up, voice down, JSON events on a data channel =====> Realtime model
+  POST /api/sessions/{id}/events ---->  JSONL log (transcript, tool calls, latency)
+```
+
+- **The API key stays on the server.** The browser gets a secret that expires in two minutes and already carries the instructions, tool schema, and audio settings.
+- **Audio never touches the backend**, so it adds nothing to voice latency.
+- **One deck file drives everything.** `backend/app/deck.json` is rendered by the UI, compiled into the system prompt, and used as the list of facts the agent may state.
+
+### Slides are made of blocks
+
+Each slide has two to four typed blocks (`stat`, `chart`, `table`, `steps`, `callout`). A block carries what is drawn, a talking point for the agent to paraphrase, and its approved facts. Because the unit of grounding is also the unit of highlighting, the viewer can see where each answer came from.
+
+### Who decides what
+
+The first version let the model drive the deck with a tool call per block. A smaller model would speak one block and then wait, so the user had to keep saying "continue". The split now is:
+
+- **The app sequences.** A small state machine in `useRealtimeSession.ts` owns a cursor into the deck. It sends the model a `PRESENT` note with one block's talking point and facts, highlights that block, and when the audio finishes it moves the cursor and sends the next. No tool call is needed to narrate, so there is no extra latency between blocks and the highlight cannot drift from the voice.
+- **The model judges.** When the user speaks, the model picks one of three tools: `show_answer(slide_id, block_id)` for a question, `continue_presentation()` to resume, `present_slide(slide_id)` to go to a slide. Off-topic questions get a spoken refusal and no tool.
+
+State transitions:
+
+| Event | What happens |
+|---|---|
+| Block audio finishes | Cursor advances; next block is presented. After the last block, a closing line |
+| User interrupts | Server cancels speech. Cursor stays on the interrupted block |
+| `show_answer` | Slide and block are highlighted as the answer source; facts are returned in the tool result; the model answers |
+| Answer or refusal finishes | Wait five seconds; if the user is silent, resume from the cursor |
+| `continue_presentation` | Resume from the cursor at once |
+| `present_slide` or a thumbnail click | Cursor moves to that slide's first block; presenting continues from there |
+| Stop talking | Speech is cancelled; nothing resumes until the user speaks or clicks |
+
+A turn counts as finished only when the model has stopped generating and the audio has stopped playing. The model generates faster than it speaks, so acting on generation alone would change the slide mid-sentence.
+
+### Interruption
+
+Turn detection runs on OpenAI's side (semantic VAD with `interrupt_response`). When you start speaking, the server cancels the response and drops unplayed audio. The browser reacts to `input_audio_buffer.speech_started` by marking the transcript line as interrupted and discarding any queued tool call. **Stop talking** and thumbnail clicks do the same by hand with `response.cancel` and `output_audio_buffer.clear`, and wait for the cancel to be confirmed before asking for new speech.
+
+### Guardrails
+
+- Prompt: state only what is in the facts; fixed refusal line for off-label, competitor, pricing, and individual patient questions.
+- Facts are re-supplied at the moment of speaking, in the PRESENT note or the tool result.
+- Server: per-IP session limit, ten-minute call cap, optional access code.
+
+## Layout
+
+```
+backend/app/
+  deck.json      the six slides
+  deck.py        load and validate
+  prompt.py      system instructions and tool schema, built from the deck
+  realtime.py    session config, ephemeral secret
+  routes.py      /api endpoints, rate limit, event log
+  main.py        app, static file serving
+frontend/src/
+  hooks/useRealtimeSession.ts   WebRTC call, events, tool calls, interruption
+  components/SlideView.tsx      layouts, transitions, highlight
+  components/Blocks.tsx         one renderer per block type
+  components/Panel.tsx          status, controls, transcript
+```
+
+## Trade-offs and limits
+
+- **Speech-to-speech over a custom STT, LLM, TTS pipeline.** Lower latency and far less code, at the cost of less control over each stage and a single vendor.
+- **Each block is its own model turn**, so there is a short pause between blocks. No word-level highlighting: the API gives no word timings for spoken audio.
+- **Grounding is by prompt and tool result, not enforced.** A production system in a regulated setting would add an output check against approved claims before audio is released.
+- **Rate limit is in memory** and trusts `X-Forwarded-For`; fine for one demo instance.
+- The user transcript comes from a separate transcription model and can differ slightly from what the voice model heard.
+
+## Next steps
+
+- Automated evaluation: replay the utterances above as audio or text and score slide, block, and factual accuracy.
+- Retrieval over real prescribing information instead of a fixed fact list.
+- Server-side session relay for audit logging and claim checking.
+- Deck authoring and multiple decks.
