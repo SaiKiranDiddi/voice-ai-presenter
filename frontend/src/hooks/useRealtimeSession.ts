@@ -89,6 +89,30 @@ interface Internals {
   afterCancel: (() => void) | null
   paused: boolean
   mutedBeforePause: boolean
+
+  // Audio level metering for the waveform. Display only.
+  meterContext: AudioContext | null
+  agentAnalyser: AnalyserNode | null
+  userAnalyser: AnalyserNode | null
+}
+
+export interface Analysers {
+  agent: AnalyserNode | null
+  user: AnalyserNode | null
+}
+
+/** Tap a stream for its levels without playing it. Returns null if that fails. */
+function meter(context: AudioContext | null, stream: MediaStream): AnalyserNode | null {
+  if (!context) return null
+  try {
+    const analyser = context.createAnalyser()
+    analyser.fftSize = 512
+    analyser.smoothingTimeConstant = 0.7
+    context.createMediaStreamSource(stream).connect(analyser)
+    return analyser
+  } catch {
+    return null
+  }
 }
 
 /** A silent input track, for running the presentation with no microphone (?silent). */
@@ -138,6 +162,9 @@ const fresh = (): Internals => ({
   afterCancel: null,
   paused: false,
   mutedBeforePause: false,
+  meterContext: null,
+  agentAnalyser: null,
+  userAnalyser: null,
 })
 
 /**
@@ -718,6 +745,7 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
       flushLogs()
       st.dc?.close()
       st.pc?.close()
+      void st.meterContext?.close().catch(() => {})
       st.stream?.getTracks().forEach((track) => track.stop())
       if (st.audio) st.audio.srcObject = null
       s.current = fresh()
@@ -765,6 +793,15 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
         st.audio = audio
         pc.ontrack = (event) => {
           audio.srcObject = event.streams[0]
+          st.agentAnalyser = meter(st.meterContext, event.streams[0])
+        }
+        // Level meters for the waveform. Display only: nothing depends on them.
+        try {
+          st.meterContext = new AudioContext()
+          void st.meterContext.resume()
+          st.userAnalyser = meter(st.meterContext, stream)
+        } catch {
+          st.meterContext = null
         }
         pc.addTrack(stream.getAudioTracks()[0], stream)
         pc.onconnectionstatechange = () => {
@@ -902,6 +939,12 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  /** The presenter's and the user's audio analysers, for drawing the waveform. */
+  const getAnalysers = useCallback(
+    (): Analysers => ({ agent: s.current.agentAnalyser, user: s.current.userAnalyser }),
+    [],
+  )
+
   const live = state === 'listening' || state === 'thinking' || state === 'speaking' || state === 'paused'
 
   return {
@@ -921,5 +964,6 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
     resume,
     toggleMute,
     presentSlide,
+    getAnalysers,
   }
 }
