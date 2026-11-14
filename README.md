@@ -21,7 +21,7 @@ To watch it without a microphone, open http://localhost:8000/?silent: the agent 
 
 For frontend development, run `npm run dev` in `frontend/` alongside the backend; Vite proxies `/api` to port 8000.
 
-Tests: `cd backend && ../.venv/bin/python -m pytest` for the backend, `cd frontend && npm test` for the presentation flow
+Tests: `cd backend && ../.venv/bin/python -m pytest` for the backend, `cd frontend && npm test` for the presentation flow.
 
 Docker: `docker build -t presenter . && docker run -p 8000:8000 --env-file .env presenter`
 
@@ -170,5 +170,5 @@ backend/scripts/simulate.py     typed, text-only run against the real API
 
 - Automated evaluation: replay the utterances above as audio or text and score slide, block, and factual accuracy.
 - Retrieval over real prescribing information instead of a fixed fact list.
-- Server-side session relay for audit logging and claim checking.
+- Move the presenter to the backend: keep audio on WebRTC between the browser and OpenAI, and have the server join the same call over OpenAI's sideband WebSocket (`?call_id=`) to sequence the deck, answer tool calls, log every event, and check answers against approved claims.
 - Deck authoring, and choosing a deck per call instead of per server.
