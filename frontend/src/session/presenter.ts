@@ -202,7 +202,12 @@ export class Presenter {
           this.updateTranscript((lines) => upsertLine(lines, id, 'user', (line) => ({ ...line, text })))
           this.io.log('user_transcript', { text })
         } else {
+          // Noise, not speech: a cough, a door. Remove it from the model's
+          // conversation too. Left there, it stays an unanswered user turn
+          // and the model keeps trying to answer it instead of presenting.
           this.updateTranscript((lines) => removeLine(lines, id))
+          this.io.send({ type: 'conversation.item.delete', event_id: `delete_${id}`, item_id: id })
+          this.io.log('noise_removed', { item_id: id })
         }
         break
       }
@@ -278,6 +283,11 @@ export class Presenter {
         const code = event.error?.code
         if (this.awaitingCreated && event.error?.event_id === this.createEventId) {
           this.onCreateRejected(code, event.error?.message)
+          break
+        }
+        if (event.error?.event_id?.startsWith('delete_')) {
+          // Removing a noise turn is housekeeping; if it fails, the call goes on.
+          this.io.log('error', { code, event_id: event.error.event_id })
           break
         }
         // Cancelling when nothing is in flight is expected and harmless.

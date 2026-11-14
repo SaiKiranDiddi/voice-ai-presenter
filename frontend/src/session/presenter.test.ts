@@ -320,3 +320,35 @@ describe('when the server refuses a response.create', () => {
     expect(t.lastFocus()?.[1]).toBe('intro.what') // still waits for the cancel to land
   })
 })
+
+describe('noise mistaken for speech', () => {
+  it('a turn with an empty transcript is removed from the model\'s conversation', () => {
+    // Replays call dc382645: a cough cut a block off, the model called
+    // continue_presentation, and the empty transcript arrived just after.
+    const t = setup()
+    t.p.start()
+    t.agentSays('Testex is', { cutBeforeAudioEnds: true })
+    t.ev({ type: 'input_audio_buffer.speech_started', item_id: 'cough' })
+    t.ev({ type: 'input_audio_buffer.speech_stopped' })
+    t.agentCalls('continue_presentation', {})
+    expect(t.lastNote()).toContain('Back to the presentation')
+
+    t.ev({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'cough', transcript: '  ' })
+    expect(t.sent.at(-1)).toEqual({ type: 'conversation.item.delete', event_id: 'delete_cough', item_id: 'cough' })
+    expect(t.getTranscript().some((l) => l.id === 'cough')).toBe(false)
+  })
+
+  it('a failed delete is logged, not shown to the user', () => {
+    const t = setup()
+    t.p.start()
+    t.ev({ type: 'error', error: { code: 'item_not_found', event_id: 'delete_cough' } })
+    expect(t.io.setError).not.toHaveBeenCalled()
+  })
+
+  it('real speech stays in the conversation', () => {
+    const t = setup()
+    t.p.start()
+    t.userSays('Is it once daily?')
+    expect(t.sent.some((e) => e.type === 'conversation.item.delete')).toBe(false)
+  })
+})
