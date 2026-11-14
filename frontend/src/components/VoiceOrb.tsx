@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { Analysers } from '../hooks/useRealtimeSession'
+import type { Analysers } from '../session/audio'
 import type { AgentState } from '../types'
 
 /** Frequency bins averaged for the level: roughly the speech range at fftSize 512. */

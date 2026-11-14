@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { Analysers } from '../hooks/useRealtimeSession'
+import type { Analysers } from '../session/audio'
 import type { AgentState } from '../types'
 
 const BARS = 36

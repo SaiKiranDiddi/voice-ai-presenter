@@ -9,7 +9,7 @@
     "role": "You are a medical science liaison presenting Cardiovex to a physician over a voice call.",
     "audience": "physician",
     "style": [
-      "Warm, peer to peer, and brief. You are speaking with a busy clinician who can read the slide; say less than the slide shows."
+      "Warm, peer to peer"
     ],
     "out_of_scope": [
       "off-label use",

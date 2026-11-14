@@ -153,7 +153,9 @@ export default function App() {
       ) : (
         <main className="workspace">
           <div className="stage-column">
-            <SlideView deck={deck} view={view} progress={progress} onBlockClick={live ? undefined : toggleBlock} />
+            <div className="stage-fit">
+              <SlideView deck={deck} view={view} progress={progress} onBlockClick={live ? undefined : toggleBlock} />
+            </div>
 
             <nav className="slide-nav" aria-label="Slides">
               <button
