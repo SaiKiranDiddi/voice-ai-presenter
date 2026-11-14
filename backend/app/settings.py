@@ -18,7 +18,6 @@ class Settings:
     transcription_model: str
     session_max_seconds: int
     sessions_per_ip_per_hour: int
-    next_block_lead_ms: int
     demo_access_code: str
     deck: str
     decks_dir: Path
@@ -34,9 +33,6 @@ def get_settings() -> Settings:
         transcription_model=os.getenv("TRANSCRIPTION_MODEL", "gpt-4o-mini-transcribe"),
         session_max_seconds=int(os.getenv("SESSION_MAX_SECONDS", "600")),
         sessions_per_ip_per_hour=int(os.getenv("SESSIONS_PER_IP_PER_HOUR", "10")),
-        # How long before the current block's audio ends to request the next
-        # block. Smaller = longer pause between blocks; very large = no pause.
-        next_block_lead_ms=max(0, int(os.getenv("NEXT_BLOCK_LEAD_MS", "700"))),
         demo_access_code=os.getenv("DEMO_ACCESS_CODE", ""),
         # Which deck to present: a folder name under DECKS_DIR holding deck.json.
         deck=os.getenv("DECK", "cardiovex"),

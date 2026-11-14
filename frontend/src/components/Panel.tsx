@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { Analysers } from '../hooks/useRealtimeSession'
+import type { Analysers } from '../session/audio'
 import type { AgentState, TranscriptLine } from '../types'
 import { MicIcon, MicOffIcon, PauseIcon, PhoneOffIcon, PlayIcon, StopIcon } from './Icons'
 import { VoiceOrb } from './VoiceOrb'

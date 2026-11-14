@@ -111,8 +111,6 @@ export interface SessionInfo {
   client_secret: string
   model: string
   max_seconds: number
-  /** Request the next block this many ms before the current block's audio ends. */
-  next_block_lead_ms: number
 }
 
 export interface LoggedEvent {

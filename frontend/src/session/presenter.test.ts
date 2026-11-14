@@ -1,0 +1,254 @@
+/**
+ * The presentation flow, driven with scripted Realtime server events.
+ * Each test is one thing a listener can do; the first group maps to GOAL.md.
+ */
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { AgentState, FocusMode, TranscriptLine } from '../types'
+import { AUTO_RESUME_MS, Presenter, type ServerEvent } from './presenter'
+import { testDeck } from './testDeck'
+
+type Sent = Record<string, any>
+
+function setup() {
+  const sent: Sent[] = []
+  const focus: [string, string, FocusMode][] = []
+  const states: AgentState[] = []
+  let transcript: TranscriptLine[] = []
+  const io = {
+    send: (event: Sent) => sent.push(event),
+    focus: (slideId: string, blockId: string, mode: FocusMode) => focus.push([slideId, blockId, mode]),
+    clearHighlight: vi.fn(),
+    setState: (state: AgentState) => states.push(state),
+    setTranscript: (lines: TranscriptLine[]) => (transcript = lines),
+    setError: vi.fn(),
+    setLatency: vi.fn(),
+    log: vi.fn(),
+  }
+  const p = new Presenter(testDeck, io)
+  const ev = (event: ServerEvent) => p.handle(event)
+  let n = 0
+
+  /** The model speaks one turn, from generation to the end of playback. */
+  const agentSays = (text: string, { cutBeforeAudioEnds = false } = {}) => {
+    const item_id = `agent${++n}`
+    ev({ type: 'response.created' })
+    ev({ type: 'response.output_audio_transcript.delta', item_id, delta: text })
+    ev({ type: 'response.output_audio_transcript.done', item_id, transcript: text })
+    ev({ type: 'response.done', response: { status: 'completed' } })
+    ev({ type: 'output_audio_buffer.started' })
+    if (!cutBeforeAudioEnds) ev({ type: 'output_audio_buffer.stopped' })
+  }
+
+  /** The model answers the user with one tool call and no audio. */
+  const agentCalls = (name: string, args: object) => {
+    ev({ type: 'response.created' })
+    ev({ type: 'response.function_call_arguments.done', call_id: `call${++n}`, name, arguments: JSON.stringify(args) })
+    ev({ type: 'response.done', response: { status: 'completed' } })
+  }
+
+  /** The user talks over whatever is happening. */
+  const userSays = (text: string) => {
+    const item_id = `user${++n}`
+    ev({ type: 'input_audio_buffer.speech_started', item_id })
+    ev({ type: 'input_audio_buffer.speech_stopped' })
+    ev({ type: 'conversation.item.input_audio_transcription.completed', item_id, transcript: text })
+  }
+
+  const notes = () =>
+    sent.filter((e) => e.item?.role === 'system').map((e) => e.item.content[0].text as string)
+  const lastNote = () => notes().at(-1) ?? ''
+  const toolOutputs = () =>
+    sent.filter((e) => e.item?.type === 'function_call_output').map((e) => JSON.parse(e.item.output))
+  const lastFocus = () => focus.at(-1)
+
+  return { p, io, ev, sent, focus, states, getTranscript: () => transcript, agentSays, agentCalls, userSays, notes, lastNote, toolOutputs, lastFocus }
+}
+
+beforeEach(() => vi.useFakeTimers())
+afterEach(() => vi.useRealTimers())
+
+describe('presenting the deck', () => {
+  it('greets and presents the first block with tools off', () => {
+    const t = setup()
+    t.p.start()
+    expect(t.lastNote()).toMatch(/^PRESENT: First say one sentence that greets/)
+    expect(t.sent.at(-1)).toEqual({ type: 'response.create', response: { tool_choice: 'none' } })
+    expect(t.lastFocus()).toEqual(['intro', 'intro.what', 'presenting'])
+  })
+
+  it('moves to the next block only once the audio has finished playing', () => {
+    const t = setup()
+    t.p.start()
+    t.agentSays('Testex is a test drug.', { cutBeforeAudioEnds: true })
+    expect(t.notes()).toHaveLength(1) // generation done, still speaking: no slide change
+    t.ev({ type: 'output_audio_buffer.stopped' })
+    expect(t.notes()).toHaveLength(2)
+    expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
+    expect(t.lastNote()).toContain('This starts a new slide')
+  })
+
+  it('walks every block and then closes', () => {
+    const t = setup()
+    t.p.start()
+    for (let i = 0; i < 3; i++) t.agentSays(`block ${i}`)
+    expect(t.lastNote()).toMatch(/^CLOSE:/)
+    expect(t.io.clearHighlight).toHaveBeenCalled()
+    t.agentSays('Thanks, any questions?')
+    expect(t.states.at(-1)).toBe('listening')
+    vi.advanceTimersByTime(AUTO_RESUME_MS * 2)
+    expect(t.lastNote()).toMatch(/^CLOSE:/) // nothing more happens
+  })
+})
+
+describe('goal: the slide changes to answer a question', () => {
+  it('show_answer jumps to the answering block and hands the model its facts', () => {
+    const t = setup()
+    t.p.start()
+    t.userSays('Does it need a renal adjustment?')
+    t.agentCalls('show_answer', { slide_id: 'dosing', block_id: 'dosing.renal' })
+    expect(t.lastFocus()).toEqual(['dosing', 'dosing.renal', 'answering'])
+    expect(t.toolOutputs().at(-1)).toMatchObject({ ok: true, facts: ['No renal adjustment.'] })
+    expect(t.sent.at(-1)).toEqual({ type: 'response.create', response: { tool_choice: 'none' } })
+  })
+
+  it('present_slide goes to the slide the user asked for', () => {
+    const t = setup()
+    t.p.start()
+    t.userSays('Show me dosing')
+    t.agentCalls('present_slide', { slide_id: 'dosing' })
+    expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
+    expect(t.lastNote()).toMatch(/^PRESENT: Present this now:/)
+  })
+
+  it('a bad id is returned to the model with tools on, so it can retry', () => {
+    const t = setup()
+    t.p.start()
+    t.userSays('What about pricing?')
+    t.agentCalls('present_slide', { slide_id: 'pricing' })
+    expect(t.toolOutputs().at(-1)).toMatchObject({ ok: false, valid_slide_ids: ['intro', 'dosing'] })
+    expect(t.sent.at(-1)).toEqual({ type: 'response.create', response: {} })
+  })
+
+  it('acts on only the first of several tool calls', () => {
+    const t = setup()
+    t.p.start()
+    t.userSays('Dosing?')
+    t.ev({ type: 'response.created' })
+    t.ev({ type: 'response.function_call_arguments.done', call_id: 'a', name: 'present_slide', arguments: '{"slide_id":"dosing"}' })
+    t.ev({ type: 'response.function_call_arguments.done', call_id: 'b', name: 'present_slide', arguments: '{"slide_id":"intro"}' })
+    t.ev({ type: 'response.done', response: { status: 'completed' } })
+    expect(t.lastFocus()?.[0]).toBe('dosing')
+    expect(t.toolOutputs()).toContainEqual({ ok: false, ignored: 'one tool call per turn' })
+  })
+})
+
+describe('goal: the user can interrupt', () => {
+  it('barge-in marks the agent line interrupted and keeps the place in the deck', () => {
+    const t = setup()
+    t.p.start()
+    t.agentSays('Testex is')
+    t.agentSays('Once daily', { cutBeforeAudioEnds: true }) // block 1 playing
+    t.ev({ type: 'input_audio_buffer.speech_started', item_id: 'u' })
+    expect(t.states.at(-1)).toBe('listening')
+    expect(t.getTranscript().find((l) => l.text === 'Once daily')?.interrupted).toBe(true)
+    expect(t.p.cursor).toBe(1)
+  })
+
+  it('after an answer it resumes the cut-off block on its own if the user stays quiet', () => {
+    const t = setup()
+    t.p.start()
+    t.agentSays('Testex is')
+    t.agentSays('Once daily', { cutBeforeAudioEnds: true })
+    t.userSays('Any renal adjustment?')
+    t.agentCalls('show_answer', { slide_id: 'dosing', block_id: 'dosing.renal' })
+    t.agentSays('No adjustment needed. Anything else, or shall I carry on?')
+    expect(t.states.at(-1)).toBe('listening')
+
+    vi.advanceTimersByTime(AUTO_RESUME_MS - 1)
+    expect(t.lastNote()).not.toContain('Back to the presentation')
+    vi.advanceTimersByTime(1)
+    expect(t.lastNote()).toContain('Back to the presentation')
+    expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
+  })
+
+  it('does not auto-resume if the user speaks again', () => {
+    const t = setup()
+    t.p.start()
+    t.userSays('What is it?')
+    t.agentCalls('show_answer', { block_id: 'intro.what' })
+    t.agentSays('A test drug. Anything else?')
+    const before = t.notes().length
+    t.ev({ type: 'input_audio_buffer.speech_started', item_id: 'u2' })
+    vi.advanceTimersByTime(AUTO_RESUME_MS * 2)
+    expect(t.notes()).toHaveLength(before)
+  })
+
+  it('"continue" resumes from the interrupted block', () => {
+    const t = setup()
+    t.p.start()
+    t.agentSays('Testex is')
+    t.userSays('Hmm, okay, go on')
+    t.agentCalls('continue_presentation', {})
+    expect(t.lastNote()).toContain('Back to the presentation')
+    expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
+  })
+
+  it('the Stop button cancels speech, then waits without resuming', () => {
+    const t = setup()
+    t.p.start()
+    t.ev({ type: 'response.created' })
+    t.ev({ type: 'output_audio_buffer.started' })
+    t.p.stopSpeaking()
+    expect(t.sent.slice(-2)).toEqual([{ type: 'output_audio_buffer.clear' }, { type: 'response.cancel' }])
+    t.ev({ type: 'response.done', response: { status: 'cancelled' } })
+    expect(t.states.at(-1)).toBe('listening')
+    vi.advanceTimersByTime(AUTO_RESUME_MS * 2)
+    expect(t.notes()).toHaveLength(1)
+  })
+
+  it('a cancel we asked for wins even if the response completed first', () => {
+    const t = setup()
+    t.p.start()
+    t.ev({ type: 'response.created' })
+    t.p.stopSpeaking()
+    t.ev({ type: 'response.done', response: { status: 'completed' } })
+    t.ev({ type: 'output_audio_buffer.stopped' })
+    expect(t.notes()).toHaveLength(1)
+  })
+})
+
+describe('buttons', () => {
+  it('clicking a slide while the agent speaks cancels, then presents that slide', () => {
+    const t = setup()
+    t.p.start()
+    t.ev({ type: 'response.created' })
+    t.p.goToSlide('dosing')
+    expect(t.notes()).toHaveLength(1) // waits for the cancel to land
+    t.ev({ type: 'response.done', response: { status: 'cancelled' } })
+    expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
+  })
+
+  it('pause holds position; resume repeats the cut-off block', () => {
+    const t = setup()
+    t.p.start()
+    t.agentSays('Testex is')
+    t.ev({ type: 'response.created' })
+    t.p.pause()
+    t.ev({ type: 'response.done', response: { status: 'cancelled' } })
+    expect(t.states.at(-1)).toBe('paused')
+    t.p.resume()
+    expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
+    expect(t.lastNote()).toMatch(/^PRESENT: Present this now:/)
+  })
+
+  it('picking a slide while paused moves the bookmark only', () => {
+    const t = setup()
+    t.p.start()
+    t.p.pause()
+    const before = t.sent.length
+    t.p.goToSlide('dosing')
+    expect(t.sent).toHaveLength(before)
+    t.p.resume()
+    expect(t.lastFocus()?.[1]).toBe('dosing.schedule')
+  })
+})

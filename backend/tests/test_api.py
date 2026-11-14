@@ -154,12 +154,6 @@ def test_create_session_returns_ephemeral_secret_only(client):
     assert body["client_secret"] == "ek_test"
     assert len(body["session_id"]) == 32
     assert "sk-test" not in response.text
-    assert body["next_block_lead_ms"] == 700
-
-
-def test_next_block_lead_is_configurable(client, settings):
-    app.dependency_overrides[get_settings] = lambda: replace(settings, next_block_lead_ms=250)
-    assert client.post("/api/session", json={}).json()["next_block_lead_ms"] == 250
 
 
 def test_create_session_rate_limited(client):

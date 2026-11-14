@@ -91,7 +91,6 @@ async def create_session(
         "expires_at": secret["expires_at"],
         "model": settings.realtime_model,
         "max_seconds": settings.session_max_seconds,
-        "next_block_lead_ms": settings.next_block_lead_ms,
     }
 
 
