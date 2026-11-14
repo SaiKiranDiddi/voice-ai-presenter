@@ -6,6 +6,7 @@ import type {
   StepsContent,
   TableContent,
 } from '../types'
+import { CheckIcon } from './Icons'
 
 function Stat({ content }: { content: StatContent }) {
   return (
@@ -17,38 +18,53 @@ function Stat({ content }: { content: StatContent }) {
   )
 }
 
+/** Bars hang down from a zero line, because the values are reductions. */
 function Chart({ content }: { content: ChartContent }) {
   const width = 360
-  const baseline = 40
-  const maxBar = 150
-  const barWidth = 96
+  const height = 232
+  const baseline = 38
+  const maxBar = 148
+  const barWidth = 92
   const peak = Math.max(...content.bars.map((bar) => Math.abs(bar.value)))
   const slot = width / content.bars.length
+  const gridlines = [0.25, 0.5, 0.75, 1].map((step) => baseline + step * maxBar)
   return (
     <>
-      <h3 className="block-title">{content.title}</h3>
-      <svg className="chart" viewBox={`0 0 ${width} 240`} role="img" aria-label={content.title}>
-        <line x1="16" x2={width - 16} y1={baseline} y2={baseline} className="chart-axis" />
+      <div className="chart-head">
+        <h3 className="block-title">{content.title}</h3>
+        <span className="chart-unit">{content.unit}</span>
+      </div>
+      <svg className="chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={content.title}>
+        <defs>
+          <linearGradient id="bar-emphasis" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="var(--accent-bright)" />
+            <stop offset="1" stopColor="var(--accent-strong)" />
+          </linearGradient>
+        </defs>
+        {gridlines.map((y) => (
+          <line key={y} x1="12" x2={width - 12} y1={y} y2={y} className="chart-grid" />
+        ))}
+        <line x1="12" x2={width - 12} y1={baseline} y2={baseline} className="chart-axis" />
         {content.bars.map((bar, index) => {
-          const height = (Math.abs(bar.value) / peak) * maxBar
+          const barHeight = (Math.abs(bar.value) / peak) * maxBar
           const x = slot * index + (slot - barWidth) / 2
           const centre = x + barWidth / 2
           return (
-            <g key={bar.label}>
-              <text x={centre} y={baseline - 14} className="chart-label">
+            <g key={bar.label} className={bar.emphasis ? 'is-emphasis' : undefined}>
+              <text x={centre} y={baseline - 13} className="chart-label">
                 {bar.label}
               </text>
               <rect
                 x={x}
                 y={baseline}
                 width={barWidth}
-                height={height}
-                rx="6"
-                className={bar.emphasis ? 'chart-bar chart-bar--emphasis' : 'chart-bar'}
-                style={{ animationDelay: `${index * 120}ms` }}
+                height={barHeight}
+                rx="7"
+                className="chart-bar"
+                style={{ animationDelay: `${200 + index * 140}ms` }}
               />
-              <text x={centre} y={baseline + height + 26} className="chart-value">
-                {bar.value.toString().replace('-', '−')} {content.unit}
+              <text x={centre} y={baseline + barHeight + 25} className="chart-value">
+                {bar.value.toString().replace('-', '−')}
               </text>
             </g>
           )
@@ -65,8 +81,8 @@ function Table({ content }: { content: TableContent }) {
       <table className="data-table">
         <thead>
           <tr>
-            {content.columns.map((column) => (
-              <th key={column}>{column}</th>
+            {content.columns.map((column, index) => (
+              <th key={column}>{index === 1 ? <span className="th-pill">{column}</span> : column}</th>
             ))}
           </tr>
         </thead>
@@ -107,7 +123,10 @@ function Callout({ content }: { content: CalloutContent }) {
       {content.bullets && (
         <ul className="callout-bullets">
           {content.bullets.map((bullet) => (
-            <li key={bullet}>{bullet}</li>
+            <li key={bullet}>
+              <CheckIcon />
+              <span>{bullet}</span>
+            </li>
           ))}
         </ul>
       )}

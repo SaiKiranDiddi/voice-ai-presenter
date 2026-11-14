@@ -1,13 +1,13 @@
-/* ---- slide ---- */
+/* The slide stage, the slide itself, and every block type drawn on it. */
 
 .stage {
+  position: relative;
   aspect-ratio: 16 / 9;
   container-type: inline-size;
   border-radius: var(--radius);
   background: var(--card);
-  box-shadow:
-    0 1px 2px rgba(15, 27, 45, 0.06),
-    0 12px 32px rgba(15, 27, 45, 0.08);
+  border: 1px solid rgba(14, 26, 43, 0.06);
+  box-shadow: var(--shadow-3);
   overflow: hidden;
 }
 
@@ -15,14 +15,17 @@
   height: 100%;
 }
 
-/* Everything inside scales with the stage width, like a real slide. */
+/* Everything inside scales with the container width, like a real slide. */
 .slide-inner {
   height: 100%;
   font-size: 1.5cqw;
-  padding: 2.4em 2.8em 1.4em;
+  padding: 2.3em 2.8em 1.2em;
   display: flex;
   flex-direction: column;
-  gap: 1.4em;
+  gap: 1.3em;
+  background:
+    radial-gradient(60em 26em at 100% 0%, rgba(11, 122, 131, 0.045), transparent 70%),
+    var(--card);
 }
 
 .slide-header {
@@ -33,19 +36,30 @@
 }
 
 .eyebrow {
-  font-size: 0.82em;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  font-size: 0.78em;
+  font-weight: 650;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--accent);
-  margin-bottom: 0.35em;
+  margin-bottom: 0.5em;
+}
+
+.eyebrow::before {
+  content: '';
+  width: 2em;
+  height: 0.22em;
+  border-radius: 1em;
+  background: linear-gradient(90deg, var(--accent), var(--accent-bright));
 }
 
 .slide-title {
-  font-size: 2.1em;
-  line-height: 1.12;
-  letter-spacing: -0.02em;
-  font-weight: 700;
+  font-size: 2.15em;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  font-weight: 720;
   text-wrap: balance;
 }
 
@@ -57,24 +71,46 @@
 }
 
 .slide-count {
-  font-size: 0.85em;
-  color: var(--muted);
+  font-size: 0.82em;
+  font-weight: 650;
+  color: var(--ink-2);
   font-variant-numeric: tabular-nums;
+  padding: 0.3em 0.75em;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+}
+
+.slide-count span {
+  color: var(--faint);
+  font-weight: 500;
 }
 
 .answer-chip {
-  font-size: 0.85em;
-  font-weight: 600;
+  font-size: 0.82em;
+  font-weight: 650;
   color: var(--answer);
   background: var(--answer-soft);
-  padding: 0.35em 0.8em;
+  padding: 0.35em 0.85em;
   border-radius: 999px;
   animation: chip-in 0.35s ease-out both;
 }
 
 .slide-footer {
-  font-size: 0.68em;
-  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  gap: 2em;
+  padding-top: 0.9em;
+  border-top: 1px solid var(--line);
+  font-size: 0.66em;
+  color: var(--faint);
+}
+
+.slide-footer-brand {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 
 /* ---- blocks and layouts ---- */
@@ -87,25 +123,22 @@
 }
 
 .block {
+  position: relative;
   min-width: 0;
   border: 1px solid var(--line);
-  border-radius: 1em;
+  border-radius: 1.1em;
   padding: 1.3em 1.5em;
   background: var(--card);
+  box-shadow: 0 0.06em 0.12em rgba(14, 26, 43, 0.04);
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 0.5em;
   transition:
-    opacity 0.35s ease,
-    transform 0.35s ease,
-    box-shadow 0.35s ease,
-    border-color 0.35s ease;
-}
-
-.block[onclick],
-.stage .block {
-  cursor: default;
+    opacity 0.4s ease,
+    transform 0.4s var(--ease-out),
+    box-shadow 0.4s ease,
+    border-color 0.4s ease;
 }
 
 .layout-hero .blocks {
@@ -131,101 +164,198 @@
   grid-template-columns: repeat(3, 1fr);
 }
 
+/* Blocks arrive one after another when a slide comes on. Only opacity and
+   translate are animated, with backwards fill, so the highlight styles below
+   take over cleanly once the entrance is done. */
+.slide--enter-next .block,
+.slide--enter-prev .block,
+.slide--enter-jump .block {
+  animation: block-in 0.5s var(--ease-out) backwards;
+  animation-delay: calc(120ms + var(--i, 0) * 80ms);
+}
+
+@keyframes block-in {
+  from {
+    opacity: 0;
+    translate: 0 0.9em;
+  }
+}
+
 /* Highlight: the focused block lifts, the rest recede. */
 .has-focus .block {
-  opacity: 0.36;
+  opacity: 0.38;
 }
 
 .has-focus .block.is-focus {
   opacity: 1;
   border-color: var(--accent);
   box-shadow:
-    0 0 0 0.2em var(--accent-soft),
-    0 0.9em 2em rgba(11, 122, 131, 0.18);
+    0 0 0 0.22em var(--accent-soft),
+    0 1em 2.2em rgba(11, 122, 131, 0.2);
   transform: translateY(-0.2em) scale(1.012);
 }
 
 .is-answering .block.is-focus {
   border-color: var(--answer);
   box-shadow:
-    0 0 0 0.2em var(--answer-soft),
-    0 0.9em 2em rgba(180, 83, 10, 0.18);
+    0 0 0 0.22em var(--answer-soft),
+    0 1em 2.2em rgba(180, 83, 10, 0.2);
+}
+
+/* A tag on the highlighted block says why it is highlighted. */
+.mode-presenting .block.is-focus::after,
+.mode-answering .block.is-focus::after {
+  position: absolute;
+  top: -0.95em;
+  left: 1.3em;
+  padding: 0.28em 0.8em;
+  border-radius: 999px;
+  font-size: 0.7em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  animation: chip-in 0.3s ease-out both;
+}
+
+.mode-presenting .block.is-focus::after {
+  content: 'Presenting';
+  background: var(--accent);
+}
+
+.mode-answering .block.is-focus::after {
+  content: 'Source for this answer';
+  background: var(--answer);
 }
 
 .block-title {
-  font-size: 1.05em;
+  font-size: 1.08em;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
+/* stat */
+
 .block--stat {
-  background: linear-gradient(160deg, var(--accent-soft), #f4fbfb);
-  border-color: transparent;
+  border-color: rgba(11, 122, 131, 0.14);
+  background:
+    radial-gradient(18em 18em at 105% 110%, rgba(23, 163, 160, 0.16), transparent 62%),
+    linear-gradient(160deg, var(--accent-soft), var(--accent-softer));
 }
 
 .stat-value {
-  font-size: 4.2em;
-  line-height: 1;
+  font-size: 4.3em;
+  line-height: 0.95;
   font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--accent-strong);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(170deg, var(--accent), var(--accent-strong));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  padding-bottom: 0.06em;
 }
 
 .stat-label {
   font-size: 1.05em;
   line-height: 1.35;
+  font-weight: 500;
   color: var(--ink);
   max-width: 22em;
 }
 
 .stat-sub {
-  font-size: 0.95em;
-  font-weight: 600;
-  color: var(--muted);
+  align-self: flex-start;
+  margin-top: 0.3em;
+  font-size: 0.82em;
+  font-weight: 650;
+  color: var(--accent-strong);
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(11, 122, 131, 0.16);
+  padding: 0.25em 0.75em;
+  border-radius: 999px;
+}
+
+.layout-hero .block--stat {
+  padding: 2em 2.2em;
+  background:
+    radial-gradient(circle at 100% 100%, transparent 0 9em, rgba(11, 122, 131, 0.07) 9em 9.15em, transparent 9.15em 14em, rgba(11, 122, 131, 0.06) 14em 14.15em, transparent 14.15em 19em, rgba(11, 122, 131, 0.05) 19em 19.15em, transparent 19.15em),
+    radial-gradient(22em 22em at 105% 110%, rgba(23, 163, 160, 0.18), transparent 62%),
+    linear-gradient(160deg, var(--accent-soft), var(--accent-softer));
 }
 
 .layout-hero .stat-value {
-  font-size: 6em;
+  font-size: 6.4em;
+}
+
+/* callout */
+
+.block--callout {
+  justify-content: flex-start;
+  padding-top: 1.5em;
+}
+
+.layout-hero .block--callout,
+.layout-flow .block--callout {
+  justify-content: center;
+  padding-top: 1.3em;
+}
+
+.block--callout .block-title {
+  display: flex;
+  align-items: center;
+  gap: 0.55em;
+}
+
+.block--callout .block-title::before {
+  content: '';
+  width: 0.28em;
+  height: 1.05em;
+  border-radius: 1em;
+  background: linear-gradient(180deg, var(--accent-bright), var(--accent));
 }
 
 .callout-text {
-  font-size: 1.05em;
-  line-height: 1.4;
+  font-size: 1.02em;
+  line-height: 1.42;
+  color: var(--ink-2);
 }
 
 .callout-bullets {
   list-style: none;
   display: grid;
-  gap: 0.45em;
-  margin-top: 0.3em;
+  gap: 0.5em;
+  margin-top: 0.35em;
 }
 
 .callout-bullets li {
-  position: relative;
-  padding-left: 1.3em;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6em;
   line-height: 1.35;
   color: var(--muted);
 }
 
-.callout-bullets li::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0.5em;
-  width: 0.5em;
-  height: 0.5em;
+.callout-bullets .icon {
+  width: 1.15em;
+  height: 1.15em;
+  margin-top: 0.1em;
+  padding: 0.18em;
   border-radius: 50%;
-  background: var(--accent);
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  stroke-width: 3;
 }
 
 .footnote {
-  font-size: 0.78em;
-  color: var(--muted);
+  font-size: 0.74em;
+  color: var(--faint);
 }
 
 /* steps */
 
 .block--steps {
-  padding: 1.1em 1.3em;
+  padding: 1.3em 1.6em;
 }
 
 .steps {
@@ -243,29 +373,37 @@
   align-content: start;
 }
 
+/* The line joining one numbered node to the next. */
 .step:not(:last-child)::after {
-  content: '→';
+  content: '';
   position: absolute;
-  right: -1.25em;
-  top: 0.3em;
-  color: var(--accent);
-  font-size: 1.3em;
+  top: 1.05em;
+  left: 2.7em;
+  right: -1.1em;
+  height: 0.14em;
+  border-radius: 1em;
+  background: linear-gradient(90deg, var(--accent) 0 40%, var(--line-strong));
+  opacity: 0.55;
 }
 
 .step-number {
-  width: 2em;
-  height: 2em;
+  width: 2.2em;
+  height: 2.2em;
+  margin-bottom: 0.35em;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--accent);
+  background: linear-gradient(150deg, var(--accent-bright), var(--accent-strong));
+  box-shadow: 0 0 0 0.3em var(--accent-soft);
   color: #fff;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .step-title {
-  font-size: 1.15em;
+  font-size: 1.12em;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .step-text {
@@ -275,30 +413,62 @@
 
 /* table */
 
+.block--table {
+  justify-content: flex-start;
+  gap: 0.8em;
+}
+
 .data-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-variant-numeric: tabular-nums;
 }
 
 .data-table th {
   text-align: left;
-  font-size: 0.82em;
-  letter-spacing: 0.05em;
+  font-size: 0.74em;
+  font-weight: 650;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--muted);
-  padding: 0 0.6em 0.7em;
+  padding: 0.2em 0.9em 0.9em;
   border-bottom: 2px solid var(--line);
 }
 
+.th-pill {
+  display: inline-block;
+  padding: 0.25em 0.8em;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--accent);
+}
+
 .data-table td {
-  padding: 0.8em 0.6em;
+  padding: 0.82em 0.9em;
   border-bottom: 1px solid var(--line);
+}
+
+.data-table td:first-child {
+  font-weight: 550;
 }
 
 .data-table td:nth-child(2) {
   font-weight: 700;
   color: var(--accent-strong);
+  background: var(--accent-softer);
+}
+
+.data-table td:nth-child(n + 3) {
+  color: var(--muted);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.data-table tbody tr:last-child td:nth-child(2) {
+  border-radius: 0 0 0.6em 0.6em;
 }
 
 .data-table th:not(:first-child),
@@ -308,6 +478,24 @@
 
 /* chart */
 
+.block--chart {
+  justify-content: flex-start;
+}
+
+.chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1em;
+}
+
+.chart-unit {
+  font-size: 0.78em;
+  font-weight: 600;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
 .chart {
   width: 100%;
   flex: 1;
@@ -315,45 +503,62 @@
 }
 
 .chart-axis {
-  stroke: var(--line);
+  stroke: var(--line-strong);
   stroke-width: 2;
+}
+
+.chart-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
 }
 
 .chart-bar {
   fill: var(--neutral-bar);
   transform-box: fill-box;
   transform-origin: top;
-  animation: bar-grow 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: bar-grow 0.8s var(--ease-out) both;
 }
 
-.chart-bar--emphasis {
-  fill: var(--accent);
+.is-emphasis .chart-bar {
+  fill: url(#bar-emphasis);
 }
 
 .chart-label,
 .chart-value {
   text-anchor: middle;
-  font-size: 15px;
-  fill: var(--ink);
+  fill: var(--ink-2);
 }
 
 .chart-label {
+  font-size: 14px;
   font-weight: 600;
 }
 
 .chart-value {
-  font-weight: 700;
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
+  fill: var(--muted);
+}
+
+.is-emphasis .chart-label {
+  fill: var(--accent-strong);
+}
+
+.is-emphasis .chart-value {
+  fill: var(--accent-strong);
 }
 
 /* ---- slide transitions ---- */
 
 .slide--enter-next {
-  animation: enter-next 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: enter-next 0.45s var(--ease-out) both;
 }
 
 .slide--enter-prev {
-  animation: enter-prev 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: enter-prev 0.45s var(--ease-out) both;
 }
 
 .slide--enter-jump {
@@ -363,21 +568,21 @@
 @keyframes enter-next {
   from {
     opacity: 0;
-    transform: translateX(6%);
+    transform: translateX(4%);
   }
 }
 
 @keyframes enter-prev {
   from {
     opacity: 0;
-    transform: translateX(-6%);
+    transform: translateX(-4%);
   }
 }
 
 @keyframes enter-jump {
   from {
     opacity: 0;
-    transform: scale(0.965);
+    transform: scale(0.97);
   }
 }
 
