@@ -72,7 +72,7 @@ describe('presenting the deck', () => {
     const t = setup()
     t.p.start()
     expect(t.lastNote()).toMatch(/^PRESENT: First say one sentence that greets/)
-    expect(t.sent.at(-1)).toEqual({ type: 'response.create', response: { tool_choice: 'none' } })
+    expect(t.sent.at(-1)).toMatchObject({ type: 'response.create', response: { tool_choice: 'none' } })
     expect(t.lastFocus()).toEqual(['intro', 'intro.what', 'presenting'])
   })
 
@@ -108,7 +108,7 @@ describe('goal: the slide changes to answer a question', () => {
     t.agentCalls('show_answer', { slide_id: 'dosing', block_id: 'dosing.renal' })
     expect(t.lastFocus()).toEqual(['dosing', 'dosing.renal', 'answering'])
     expect(t.toolOutputs().at(-1)).toMatchObject({ ok: true, facts: ['No renal adjustment.'] })
-    expect(t.sent.at(-1)).toEqual({ type: 'response.create', response: { tool_choice: 'none' } })
+    expect(t.sent.at(-1)).toMatchObject({ type: 'response.create', response: { tool_choice: 'none' } })
   })
 
   it('present_slide goes to the slide the user asked for', () => {
@@ -117,7 +117,7 @@ describe('goal: the slide changes to answer a question', () => {
     t.userSays('Show me dosing')
     t.agentCalls('present_slide', { slide_id: 'dosing' })
     expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
-    expect(t.lastNote()).toMatch(/^PRESENT: Present this now:/)
+    expect(t.lastNote()).toMatch(/^PRESENT: Start this slide by naming its topic/)
   })
 
   it('a bad id is returned to the model with tools on, so it can retry', () => {
@@ -126,7 +126,8 @@ describe('goal: the slide changes to answer a question', () => {
     t.userSays('What about pricing?')
     t.agentCalls('present_slide', { slide_id: 'pricing' })
     expect(t.toolOutputs().at(-1)).toMatchObject({ ok: false, valid_slide_ids: ['intro', 'dosing'] })
-    expect(t.sent.at(-1)).toEqual({ type: 'response.create', response: {} })
+    expect(t.sent.at(-1)).toMatchObject({ type: 'response.create' })
+    expect(t.sent.at(-1)?.response).toEqual({})
   })
 
   it('acts on only the first of several tool calls', () => {
@@ -228,6 +229,25 @@ describe('buttons', () => {
     expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
   })
 
+  it('a click just after the next block was requested cancels it, not races it', () => {
+    const t = setup()
+    t.p.start()
+    t.agentSays('Testex is a test drug.') // block 0 ends; block 1 is requested
+    const creates = () => t.sent.filter((e) => e.type === 'response.create').length
+    expect(creates()).toBe(2)
+
+    t.p.goToSlide('intro') // before the server confirmed block 1's response
+    expect(creates()).toBe(2) // no second response.create while one is in flight
+    t.ev({ type: 'response.created' })
+    expect(t.sent.at(-1)).toEqual({ type: 'response.cancel' })
+    t.ev({ type: 'response.done', response: { status: 'cancelled' } })
+    expect(t.lastFocus()).toEqual(['intro', 'intro.what', 'presenting'])
+
+    // The clicked slide is presented from its first block, then the deck carries on in order.
+    t.agentSays('Testex is a test drug.')
+    expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
+  })
+
   it('pause holds position; resume repeats the cut-off block', () => {
     const t = setup()
     t.p.start()
@@ -238,7 +258,7 @@ describe('buttons', () => {
     expect(t.states.at(-1)).toBe('paused')
     t.p.resume()
     expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
-    expect(t.lastNote()).toMatch(/^PRESENT: Present this now:/)
+    expect(t.lastNote()).toMatch(/^PRESENT: Start this slide by naming its topic/)
   })
 
   it('picking a slide while paused moves the bookmark only', () => {
@@ -249,6 +269,54 @@ describe('buttons', () => {
     t.p.goToSlide('dosing')
     expect(t.sent).toHaveLength(before)
     t.p.resume()
+    // Resume waits for the pause's cancel to land before asking for new speech.
+    t.ev({ type: 'response.created' })
+    t.ev({ type: 'response.done', response: { status: 'cancelled' } })
     expect(t.lastFocus()?.[1]).toBe('dosing.schedule')
+    expect(t.states.at(-1)).toBe('thinking')
+  })
+})
+
+describe('when the server refuses a response.create', () => {
+  const lastCreateId = (sent: Sent[]) => sent.filter((e) => e.type === 'response.create').at(-1)?.event_id
+
+  it('a refused request does not leave the buttons waiting forever', () => {
+    const t = setup()
+    t.p.start()
+    t.ev({ type: 'error', error: { code: 'invalid_request_error', message: 'nope', event_id: lastCreateId(t.sent) } })
+    expect(t.io.setError).toHaveBeenCalledWith('nope')
+    expect(t.states.at(-1)).toBe('listening')
+
+    // A slide click now goes straight through: there is nothing to cancel.
+    t.p.goToSlide('dosing')
+    expect(t.sent.some((e) => e.type === 'response.cancel')).toBe(false)
+    expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
+  })
+
+  it('a click waiting on a refused request runs at once', () => {
+    const t = setup()
+    t.p.start()
+    t.p.goToSlide('dosing') // queued until the first response is confirmed
+    t.ev({ type: 'error', error: { code: 'invalid_request_error', event_id: lastCreateId(t.sent) } })
+    expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
+    expect(t.io.setError).not.toHaveBeenCalled()
+  })
+
+  it('"already has an active response" waits for that response instead', () => {
+    const t = setup()
+    t.p.start()
+    t.ev({ type: 'error', error: { code: 'conversation_already_has_active_response', event_id: lastCreateId(t.sent) } })
+    expect(t.io.setError).not.toHaveBeenCalled()
+    t.ev({ type: 'response.created' })
+    t.ev({ type: 'response.done', response: { status: 'completed' } })
+    expect(t.lastFocus()?.[1]).toBe('dosing.schedule') // the flow carried on
+  })
+
+  it('an error about some other event leaves the request in flight', () => {
+    const t = setup()
+    t.p.start()
+    t.ev({ type: 'error', error: { code: 'item_not_found', event_id: 'something_else' } })
+    t.p.goToSlide('dosing')
+    expect(t.lastFocus()?.[1]).toBe('intro.what') // still waits for the cancel to land
   })
 })

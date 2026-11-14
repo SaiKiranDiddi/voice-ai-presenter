@@ -49,7 +49,8 @@ export interface ServerEvent {
   name?: string
   arguments?: string
   response?: { status?: string; status_details?: { error?: { message?: string } } }
-  error?: { code?: string; message?: string }
+  /** event_id names the client event that caused the error, when there is one. */
+  error?: { code?: string; message?: string; event_id?: string }
 }
 
 /**
@@ -76,7 +77,13 @@ export class Presenter {
   private turn: TurnKind = 'block'
   /** Tool calls from the current response, run once its turn finishes. */
   private pending: ToolCall[] = []
+  /** A response is in flight: from the moment we ask for one until response.done. */
   private responseActive = false
+  /** We sent response.create and the server has not confirmed it with response.created yet. */
+  private awaitingCreated = false
+  /** event_id of our latest response.create, so an error can be matched to it. */
+  private createEventId = ''
+  private createCount = 0
   private turnHasAudio = false
   private audioDone = false
   private audioPlaying = false
@@ -134,8 +141,10 @@ export class Presenter {
     if (!this.paused) return
     this.paused = false
     this.io.log('resume')
-    if (this.deckFinished) this.io.setState('listening')
-    else this.presentFrom(this.cursor, 'jump')
+    const go = () => (this.deckFinished ? this.io.setState('listening') : this.presentFrom(this.cursor, 'jump'))
+    // If the pause's cancel has not landed yet, resume once it has.
+    if (this.responseActive) this.afterCancel = go
+    else go()
   }
 
   /** The call is over: stop any pending timer. */
@@ -152,8 +161,11 @@ export class Presenter {
     switch (event.type) {
       case 'response.created':
         this.responseActive = true
+        this.awaitingCreated = false
         this.turnHasAudio = false
         this.audioDone = false
+        // A cancel requested before the server confirmed the response is sent now.
+        if (this.afterCancel) this.io.send({ type: 'response.cancel' })
         break
 
       case 'input_audio_buffer.speech_started': {
@@ -264,12 +276,25 @@ export class Presenter {
 
       case 'error': {
         const code = event.error?.code
+        if (this.awaitingCreated && event.error?.event_id === this.createEventId) {
+          this.onCreateRejected(code, event.error?.message)
+          break
+        }
         // Cancelling when nothing is in flight is expected and harmless.
         if (code === 'response_cancel_not_active') {
+          // Our response is still being set up; the cancel goes out on response.created.
+          if (this.awaitingCreated) break
           const next = this.afterCancel
           this.afterCancel = null
           this.responseActive = false
           if (next) next()
+          break
+        }
+        if (code === 'conversation_already_has_active_response') {
+          // Our request was refused because another response is running. Its
+          // response.done will arrive and the flow carries on from there.
+          this.awaitingCreated = false
+          this.io.log('error', { code })
           break
         }
         const message = event.error?.message ?? 'Realtime error'
@@ -301,7 +326,7 @@ export class Presenter {
       this.sendNote(presentNote(this.deck, this.cursor, lead))
     }
     // Tools are off: we already know what this turn should say.
-    this.io.send({ type: 'response.create', response: { tool_choice: 'none' } })
+    this.requestResponse({ tool_choice: 'none' })
     this.io.setState('thinking')
   }
 
@@ -372,8 +397,44 @@ export class Presenter {
 
   private requestReply({ tools }: { tools: boolean }): void {
     this.turn = 'reply'
-    this.io.send({ type: 'response.create', response: tools ? {} : { tool_choice: 'none' } })
+    this.requestResponse(tools ? {} : { tool_choice: 'none' })
     this.io.setState('thinking')
+  }
+
+  /**
+   * Ask the model to speak. The response counts as active from this moment,
+   * not from response.created, so a click in between cancels it instead of
+   * racing it with a second response.create.
+   */
+  private requestResponse(response: Record<string, unknown>): void {
+    this.responseActive = true
+    this.awaitingCreated = true
+    this.createEventId = `create_${++this.createCount}`
+    this.io.send({ type: 'response.create', event_id: this.createEventId, response })
+  }
+
+  /**
+   * The server refused our response.create, so no response.created or
+   * response.done will come for it. Undo "active", or every later cancel
+   * would wait forever for a response that never started.
+   */
+  private onCreateRejected(code: string | undefined, message: string | undefined): void {
+    this.awaitingCreated = false
+    if (code === 'conversation_already_has_active_response') {
+      // Another response is running; its response.done carries the flow on.
+      this.io.log('error', { code })
+      return
+    }
+    this.responseActive = false
+    const next = this.afterCancel
+    this.afterCancel = null
+    if (next) {
+      next() // a cancel was waiting on this request: there is nothing to cancel
+      return
+    }
+    this.io.setError(message ?? 'The model could not start a response.')
+    this.io.log('error', { code, message })
+    this.io.setState('listening')
   }
 
   /** Stop the agent mid-speech, then run `next` once the server confirms. */
@@ -387,7 +448,8 @@ export class Presenter {
     const then = next ?? (() => this.io.setState('listening'))
     if (this.responseActive) {
       this.afterCancel = then
-      this.io.send({ type: 'response.cancel' })
+      // Not confirmed yet: the cancel is sent when response.created arrives.
+      if (!this.awaitingCreated) this.io.send({ type: 'response.cancel' })
     } else {
       then()
     }

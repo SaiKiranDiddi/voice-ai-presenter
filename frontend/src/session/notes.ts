@@ -21,7 +21,9 @@ export function presentNote(deck: Deck, index: number, lead: Lead): string {
   const opening = {
     greeting: `First say one sentence that greets the ${audience} and names what you will cover (${agenda}), and one short sentence that they can interrupt with questions at any time. Then present this:`,
     resume: 'Say "Back to the presentation." and then present this:',
-    jump: 'Present this now:',
+    jump: startsSlide
+      ? 'Start this slide by naming its topic in three or four words, then present this:'
+      : 'Present this now:',
     next: startsSlide
       ? 'This starts a new slide. Name its topic in three or four words as you begin, with no recap, and present this:'
       : 'Carry straight on, with no lead-in or recap, and present this:',

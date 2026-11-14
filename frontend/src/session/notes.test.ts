@@ -15,6 +15,11 @@ describe('presentNote', () => {
     expect(presentNote(testDeck, 2, 'next')).toContain('Carry straight on')
   })
 
+  it('names the slide topic when jumping to the start of a slide', () => {
+    expect(presentNote(testDeck, 1, 'jump')).toContain('naming its topic')
+    expect(presentNote(testDeck, 2, 'jump')).toMatch(/^PRESENT: Present this now:/)
+  })
+
   it('sends the talking point, never the fact list', () => {
     expect(presentNote(testDeck, 1, 'jump')).not.toContain('Once daily.')
   })
