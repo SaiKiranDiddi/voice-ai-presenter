@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchConfig, fetchDeck } from './api'
+import { PulseIcon } from './components/Icons'
 import { Controls, Transcript, VoiceStatus } from './components/Panel'
 import { SlideView } from './components/SlideView'
 import { useRealtimeSession } from './hooks/useRealtimeSession'
 import type { AppConfig, Deck, FocusMode, View } from './types'
 
 const INITIAL_VIEW: View = { slideIndex: 0, blockId: null, mode: 'manual', transition: 'none' }
+
+function formatClock(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+}
 
 export default function App() {
   const [deck, setDeck] = useState<Deck | null>(null)
@@ -92,11 +97,20 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true" />
+          <span className="brand-mark" aria-hidden="true">
+            <PulseIcon />
+          </span>
           <span className="brand-name">{deck.product}</span>
           <span className="brand-tag">Voice-led detail aid</span>
         </div>
-        <span className="demo-badge">Fictional product, demo only</span>
+        <div className="topbar-right">
+          {session.secondsLeft !== null && (
+            <span className="clock" title="Time left in this call">
+              {formatClock(session.secondsLeft)}
+            </span>
+          )}
+          <span className="demo-badge">Fictional product, demo only</span>
+        </div>
       </header>
 
       <main className="workspace">

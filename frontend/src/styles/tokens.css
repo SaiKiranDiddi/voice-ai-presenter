@@ -1,0 +1,250 @@
+/* Design tokens, resets, and the page shell. */
+
+:root {
+  /* Neutrals */
+  --bg: #f3f5f8;
+  --bg-tint: #e9eef3;
+  --card: #ffffff;
+  --ink: #0e1a2b;
+  --ink-2: #2b3a4e;
+  --muted: #5b6878;
+  --faint: #8a95a3;
+  --line: #e1e6ed;
+  --line-strong: #cdd5df;
+  --neutral-bar: #c3cbd6;
+
+  /* Teal: presenting */
+  --accent: #0b7a83;
+  --accent-strong: #075e66;
+  --accent-bright: #17a3a0;
+  --accent-soft: #e3f3f4;
+  --accent-softer: #f2fafa;
+
+  /* Amber: answering from a source */
+  --answer: #b4530a;
+  --answer-soft: #fdf0dd;
+
+  --danger: #b3261e;
+  --danger-soft: #fbe9e7;
+
+  /* Shape and depth */
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow-1: 0 1px 2px rgba(14, 26, 43, 0.05), 0 1px 1px rgba(14, 26, 43, 0.03);
+  --shadow-2: 0 1px 2px rgba(14, 26, 43, 0.05), 0 6px 16px rgba(14, 26, 43, 0.06);
+  --shadow-3: 0 2px 4px rgba(14, 26, 43, 0.05), 0 18px 44px rgba(14, 26, 43, 0.12);
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  font-family: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(1100px 520px at 12% -10%, rgba(11, 122, 131, 0.07), transparent 60%),
+    radial-gradient(900px 480px at 100% 0%, rgba(14, 26, 43, 0.05), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+p,
+h1,
+h2,
+h3,
+ol,
+ul,
+dl,
+dd {
+  margin: 0;
+  padding: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- shell ---- */
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 24px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: saturate(1.4) blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brand-mark {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: #fff;
+  background: linear-gradient(140deg, var(--accent-strong), var(--accent-bright));
+  box-shadow: 0 2px 6px rgba(11, 122, 131, 0.3);
+}
+
+.brand-mark svg {
+  width: 18px;
+  height: 18px;
+}
+
+.brand-name {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.brand-tag {
+  padding-left: 10px;
+  border-left: 1px solid var(--line-strong);
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+}
+
+.clock::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-bright);
+  animation: live-dot 1.6s ease-in-out infinite;
+}
+
+@keyframes live-dot {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.demo-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--answer);
+  background: var(--answer-soft);
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.workspace {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 22px;
+  padding: 22px 24px 24px;
+  max-width: 1560px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.stage-column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fatal {
+  max-width: 480px;
+  margin: 20vh auto;
+  padding: 0 24px;
+  display: grid;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.fatal h1 {
+  font-size: 20px;
+  color: var(--ink);
+}
+
+@media (max-width: 980px) {
+  .workspace {
+    grid-template-columns: 1fr;
+    padding: 14px 16px 20px;
+  }
+
+  .brand-tag {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.icon {
+  width: 1.15em;
+  height: 1.15em;
+  flex-shrink: 0;
+}
