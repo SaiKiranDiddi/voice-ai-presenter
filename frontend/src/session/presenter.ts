@@ -23,6 +23,8 @@ import { markAgentInterrupted, removeLine, upsertLine } from './transcript'
 
 /** After an answer, carry on with the deck if the user stays quiet this long. */
 export const AUTO_RESUME_MS = 5000
+/** Once the deck is finished, end the call if the user stays quiet this long. */
+export const END_AFTER_CLOSE_MS = 15000
 
 export interface PresenterIO {
   /** Send a client event to the Realtime API over the data channel. */
@@ -37,6 +39,8 @@ export interface PresenterIO {
   /** Time from the end of the user's speech to the agent's first audio. */
   setLatency: (ms: number) => void
   log: (type: string, data?: Record<string, unknown>) => void
+  /** The deck is finished and the user went quiet: hang up. */
+  endCall: () => void
 }
 
 /** The fields of a Realtime server event that the presenter reads. */
@@ -58,7 +62,7 @@ export interface ServerEvent {
  * when that turn finishes:
  *   block   -> present the next block
  *   reply   -> wait, then resume the deck if the user stays quiet
- *   closing -> the deck is finished; just listen
+ *   closing -> the deck is finished; listen, and end the call if the user stays quiet
  *   idle    -> speech was cancelled by a button; do nothing until told
  */
 type TurnKind = 'block' | 'reply' | 'closing' | 'idle'
@@ -92,6 +96,7 @@ export class Presenter {
   /** Runs once the response we asked to cancel has finished cancelling. */
   private afterCancel: (() => void) | null = null
   private resumeTimer: ReturnType<typeof setTimeout> | undefined
+  private endTimer: ReturnType<typeof setTimeout> | undefined
 
   constructor(deck: Deck, io: PresenterIO) {
     this.deck = deck
@@ -141,7 +146,11 @@ export class Presenter {
     if (!this.paused) return
     this.paused = false
     this.io.log('resume')
-    const go = () => (this.deckFinished ? this.io.setState('listening') : this.presentFrom(this.cursor, 'jump'))
+    const go = () => {
+      if (!this.deckFinished) return this.presentFrom(this.cursor, 'jump')
+      this.io.setState('listening')
+      this.scheduleEnd()
+    }
     // If the pause's cancel has not landed yet, resume once it has.
     if (this.responseActive) this.afterCancel = go
     else go()
@@ -149,7 +158,7 @@ export class Presenter {
 
   /** The call is over: stop any pending timer. */
   dispose(): void {
-    this.cancelAutoResume()
+    this.cancelTimers()
   }
 
   // ---- server events --------------------------------------------------------
@@ -177,7 +186,7 @@ export class Presenter {
         this.audioPlaying = false
         this.afterCancel = null
         this.turn = 'reply'
-        this.cancelAutoResume()
+        this.cancelTimers()
         if (wasTalking) {
           this.updateTranscript(markAgentInterrupted)
           this.io.log('interruption')
@@ -208,6 +217,9 @@ export class Presenter {
           this.updateTranscript((lines) => removeLine(lines, id))
           this.io.send({ type: 'conversation.item.delete', event_id: `delete_${id}`, item_id: id })
           this.io.log('noise_removed', { item_id: id })
+          // After the close, noise must not keep the call open: if no reply
+          // follows, the end timer starts again. A reply restarts it anyway.
+          if (this.deckFinished && !this.responseActive && !this.userSpeaking && !this.paused) this.scheduleEnd()
         }
         break
       }
@@ -319,7 +331,7 @@ export class Presenter {
 
   /** Present block `index` (or the closing line past the last block), from silence. */
   private presentFrom(index: number, lead: Lead): void {
-    this.cancelAutoResume()
+    this.cancelTimers()
     this.cursor = Math.min(index, this.blocks.length)
     if (this.cursor === this.blocks.length) {
       this.turn = 'closing'
@@ -360,9 +372,13 @@ export class Presenter {
         break
       case 'reply':
         this.io.setState('listening')
-        if (!this.deckFinished) this.scheduleAutoResume()
+        if (this.deckFinished) this.scheduleEnd()
+        else this.scheduleAutoResume()
         break
       case 'closing':
+        this.io.setState('listening')
+        this.scheduleEnd()
+        break
       case 'idle':
         this.io.setState('listening')
         break
@@ -449,7 +465,7 @@ export class Presenter {
   private cancelSpeech(next: (() => void) | null): void {
     // Whatever was being said no longer leads anywhere; `next` decides what follows.
     this.turn = 'idle'
-    this.cancelAutoResume()
+    this.cancelTimers()
     this.dropPending('cancelled by the user')
     if (this.audioPlaying || this.turnHasAudio) this.io.send({ type: 'output_audio_buffer.clear' })
     this.audioPlaying = false
@@ -467,7 +483,7 @@ export class Presenter {
 
   /** Hands-free: nobody should have to say "continue" after every answer. */
   private scheduleAutoResume(): void {
-    this.cancelAutoResume()
+    this.cancelTimers()
     this.resumeTimer = setTimeout(() => {
       this.resumeTimer = undefined
       if (this.userSpeaking || this.responseActive || this.paused) return
@@ -476,9 +492,23 @@ export class Presenter {
     }, AUTO_RESUME_MS)
   }
 
-  private cancelAutoResume(): void {
+  /** A finished demo should not hold the session open until the time limit. */
+  private scheduleEnd(): void {
+    this.cancelTimers()
+    this.endTimer = setTimeout(() => {
+      this.endTimer = undefined
+      if (this.userSpeaking || this.responseActive || this.paused) return
+      this.io.log('auto_end')
+      this.io.endCall()
+    }, END_AFTER_CLOSE_MS)
+  }
+
+  /** Something happened (speech, a click, a new block): no timer should fire now. */
+  private cancelTimers(): void {
     clearTimeout(this.resumeTimer)
     this.resumeTimer = undefined
+    clearTimeout(this.endTimer)
+    this.endTimer = undefined
   }
 
   /** Close out queued tool calls without acting on them, e.g. after a barge-in. */

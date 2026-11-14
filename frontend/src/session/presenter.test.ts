@@ -4,7 +4,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AgentState, FocusMode, TranscriptLine } from '../types'
-import { AUTO_RESUME_MS, Presenter, type ServerEvent } from './presenter'
+import { AUTO_RESUME_MS, END_AFTER_CLOSE_MS, Presenter, type ServerEvent } from './presenter'
 import { testDeck } from './testDeck'
 
 type Sent = Record<string, any>
@@ -23,6 +23,7 @@ function setup() {
     setError: vi.fn(),
     setLatency: vi.fn(),
     log: vi.fn(),
+    endCall: vi.fn(),
   }
   const p = new Presenter(testDeck, io)
   const ev = (event: ServerEvent) => p.handle(event)
@@ -116,6 +117,71 @@ describe('presenting the deck', () => {
     expect(t.states.at(-1)).toBe('listening')
     vi.advanceTimersByTime(AUTO_RESUME_MS * 2)
     expect(t.lastNote()).toMatch(/^CLOSE:/) // nothing more happens
+  })
+})
+
+describe('ending on its own after the deck', () => {
+  /** Present every block and speak the closing line. */
+  const finishDeck = (t: ReturnType<typeof setup>) => {
+    t.p.start()
+    for (let i = 0; i < 3; i++) t.agentSays(`block ${i}`)
+    t.agentSays('Thanks, any questions?')
+  }
+
+  it('ends the call once the user stays quiet after the closing line', () => {
+    const t = setup()
+    finishDeck(t)
+    vi.advanceTimersByTime(END_AFTER_CLOSE_MS - 1)
+    expect(t.io.endCall).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1)
+    expect(t.io.endCall).toHaveBeenCalledTimes(1)
+    expect(t.io.log).toHaveBeenCalledWith('auto_end')
+  })
+
+  it('a question cancels it; the quiet after the answer starts it again', () => {
+    const t = setup()
+    finishDeck(t)
+    vi.advanceTimersByTime(END_AFTER_CLOSE_MS - 1000)
+    t.userSays('Does it need a renal adjustment?')
+    vi.advanceTimersByTime(END_AFTER_CLOSE_MS)
+    expect(t.io.endCall).not.toHaveBeenCalled() // still waiting for the answer
+
+    t.agentCalls('show_answer', { block_id: 'dosing.renal' })
+    t.agentSays('No adjustment. Anything else?')
+    vi.advanceTimersByTime(AUTO_RESUME_MS)
+    expect(t.lastNote()).toMatch(/^CLOSE:/) // no auto-resume after the deck
+    vi.advanceTimersByTime(END_AFTER_CLOSE_MS - AUTO_RESUME_MS)
+    expect(t.io.endCall).toHaveBeenCalledTimes(1)
+  })
+
+  it('noise after the close does not keep the call open', () => {
+    const t = setup()
+    finishDeck(t)
+    t.ev({ type: 'input_audio_buffer.speech_started', item_id: 'n' })
+    t.ev({ type: 'input_audio_buffer.speech_stopped' })
+    t.ev({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'n', transcript: '' })
+    vi.advanceTimersByTime(END_AFTER_CLOSE_MS)
+    expect(t.io.endCall).toHaveBeenCalledTimes(1)
+  })
+
+  it('going back to a slide after the close cancels it', () => {
+    const t = setup()
+    finishDeck(t)
+    t.p.goToSlide('dosing')
+    expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
+    vi.advanceTimersByTime(END_AFTER_CLOSE_MS * 2)
+    expect(t.io.endCall).not.toHaveBeenCalled()
+  })
+
+  it('pausing after the close cancels it; resuming starts it again', () => {
+    const t = setup()
+    finishDeck(t)
+    t.p.pause()
+    vi.advanceTimersByTime(END_AFTER_CLOSE_MS * 2)
+    expect(t.io.endCall).not.toHaveBeenCalled()
+    t.p.resume()
+    vi.advanceTimersByTime(END_AFTER_CLOSE_MS)
+    expect(t.io.endCall).toHaveBeenCalledTimes(1)
   })
 })
 
