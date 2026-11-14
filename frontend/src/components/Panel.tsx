@@ -1,5 +1,8 @@
 import { useEffect, useRef } from 'react'
+import type { Analysers } from '../hooks/useRealtimeSession'
 import type { AgentState, TranscriptLine } from '../types'
+import { MicIcon, MicOffIcon, PauseIcon, PhoneOffIcon, PlayIcon, StopIcon } from './Icons'
+import { VoiceVisual } from './VoiceVisual'
 
 const STATE_LABEL: Record<AgentState, string> = {
   idle: 'Ready',
@@ -23,43 +26,30 @@ const STATE_HINT: Record<AgentState, string> = {
   error: 'See the message below.',
 }
 
-function formatClock(seconds: number): string {
-  const minutes = Math.floor(seconds / 60)
-  return `${minutes}:${String(seconds % 60).padStart(2, '0')}`
-}
-
 export function VoiceStatus({
   state,
   latencyMs,
-  secondsLeft,
+  getAnalysers,
 }: {
   state: AgentState
   latencyMs: number | null
-  secondsLeft: number | null
+  getAnalysers: () => Analysers
 }) {
   return (
-    <div className="status">
-      <div className={`orb orb--${state}`} aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </div>
-      <div className="status-text">
-        <p className="status-label" role="status">
+    <div className={`voice voice--${state}`}>
+      <VoiceVisual state={state} getAnalysers={getAnalysers} />
+      <div className="voice-text">
+        <p className="voice-label" role="status">
+          <span className="voice-dot" aria-hidden="true" />
           {STATE_LABEL[state]}
         </p>
-        <p className="status-hint">{STATE_HINT[state]}</p>
+        <p className="voice-hint">{STATE_HINT[state]}</p>
       </div>
-      <dl className="metrics">
-        <div>
-          <dt>Response time</dt>
-          <dd>{latencyMs === null ? '–' : `${latencyMs} ms`}</dd>
-        </div>
-        <div>
-          <dt>Time left</dt>
-          <dd>{secondsLeft === null ? '–' : formatClock(secondsLeft)}</dd>
-        </div>
-      </dl>
+      {latencyMs !== null && (
+        <p className="voice-metric" title="Time from the end of your question to the first sound of the reply">
+          Response time <strong>{latencyMs} ms</strong>
+        </p>
+      )}
     </div>
   )
 }
@@ -88,17 +78,27 @@ export function Controls({
   if (!live) return null
   return (
     <div className="controls">
-      <button type="button" className="wide" onClick={paused ? onResume : onPause}>
-        {paused ? '▶ Resume' : '❚❚ Pause'}
+      <button type="button" className="control control--main" onClick={paused ? onResume : onPause}>
+        {paused ? <PlayIcon /> : <PauseIcon />}
+        {paused ? 'Resume' : 'Pause'}
       </button>
-      <button type="button" onClick={onStopSpeaking} disabled={!speaking}>
-        Stop talking
+      <button type="button" className="control" onClick={onStopSpeaking} disabled={!speaking}>
+        <StopIcon />
+        <span>Stop talking</span>
       </button>
-      <button type="button" onClick={onToggleMute} aria-pressed={muted} disabled={paused}>
-        {muted ? 'Unmute mic' : 'Mute mic'}
+      <button
+        type="button"
+        className={`control ${muted ? 'is-on' : ''}`}
+        onClick={onToggleMute}
+        aria-pressed={muted}
+        disabled={paused}
+      >
+        {muted ? <MicOffIcon /> : <MicIcon />}
+        <span>{muted ? 'Unmute' : 'Mute'}</span>
       </button>
-      <button type="button" className="danger" onClick={onEnd}>
-        End call
+      <button type="button" className="control control--danger" onClick={onEnd}>
+        <PhoneOffIcon />
+        <span>End call</span>
       </button>
     </div>
   )
@@ -116,11 +116,13 @@ export function Transcript({ lines }: { lines: TranscriptLine[] }) {
       <div className="transcript-scroll">
         {lines.length === 0 && <p className="transcript-empty">The conversation will appear here.</p>}
         {lines.map((line) => (
-          <p key={line.id} className={`line line--${line.role}`}>
+          <div key={line.id} className={`line line--${line.role}`}>
             <span className="line-role">{line.role === 'agent' ? 'Presenter' : 'You'}</span>
-            {line.text}
-            {line.interrupted && <span className="line-cut"> (interrupted)</span>}
-          </p>
+            <p className="line-text">
+              {line.text}
+              {line.interrupted && <span className="line-cut">interrupted</span>}
+            </p>
+          </div>
         ))}
         <div ref={end} />
       </div>

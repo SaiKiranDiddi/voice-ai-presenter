@@ -63,11 +63,13 @@ export function SlideCanvas({ deck, slide, slideIndex, focusId = null, mode = 'm
 interface Props {
   deck: Deck
   view: View
+  /** How far through the deck the presentation is, 0 to 1. */
+  progress?: number
   /** Set when no call is live, so blocks can be highlighted by clicking. */
   onBlockClick?: (blockId: string) => void
 }
 
-export function SlideView({ deck, view, onBlockClick }: Props) {
+export function SlideView({ deck, view, progress, onBlockClick }: Props) {
   const slide = deck.slides[view.slideIndex]
   return (
     <div className="stage">
@@ -82,6 +84,11 @@ export function SlideView({ deck, view, onBlockClick }: Props) {
           onBlockClick={onBlockClick}
         />
       </article>
+      {progress !== undefined && (
+        <div className="progress" aria-hidden="true">
+          <span style={{ width: `${Math.round(progress * 100)}%` }} />
+        </div>
+      )}
     </div>
   )
 }

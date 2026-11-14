@@ -1,0 +1,89 @@
+import type { ReactNode } from 'react'
+import type { Deck } from '../types'
+import { MicIcon, PlayIcon, PulseIcon } from './Icons'
+import { SlideCanvas } from './SlideView'
+
+interface Props {
+  deck: Deck
+  maxMinutes: number
+  connecting: boolean
+  error: string | null
+  /** The access code field, when the server asks for one. */
+  accessField: ReactNode
+  onStart: () => void
+}
+
+/** The first thing a visitor sees: what this is, what will happen, and one button. */
+export function Welcome({ deck, maxMinutes, connecting, error, accessField, onStart }: Props) {
+  return (
+    <main className="welcome">
+      <div className="welcome-copy">
+        <span className="welcome-eyebrow">Voice-led detail aid</span>
+        <h1 className="welcome-title">
+          {deck.product}, <em>presented by voice.</em>
+        </h1>
+        <p className="welcome-lead">
+          An AI presenter walks you through {deck.slides.length} slides in about two minutes. Ask anything along the
+          way, and it answers from the slide that holds the evidence.
+        </p>
+
+        <ul className="welcome-points">
+          <li>
+            <span className="point-icon">
+              <PlayIcon />
+            </span>
+            <strong>It presents</strong>
+            <span>The slides advance by themselves and the part being discussed is highlighted.</span>
+          </li>
+          <li>
+            <span className="point-icon">
+              <MicIcon />
+            </span>
+            <strong>You interrupt</strong>
+            <span>Just start talking. It stops, listens, and picks up where it left off afterwards.</span>
+          </li>
+          <li>
+            <span className="point-icon">
+              <PulseIcon />
+            </span>
+            <strong>It shows its source</strong>
+            <span>Every answer jumps to the slide it comes from and marks the exact block.</span>
+          </li>
+        </ul>
+
+        <form
+          className="welcome-start"
+          onSubmit={(event) => {
+            event.preventDefault()
+            onStart()
+          }}
+        >
+          {accessField}
+          <button type="submit" className="primary" disabled={connecting}>
+            {connecting ? <span className="spinner" aria-hidden="true" /> : <PlayIcon />}
+            {connecting ? 'Connecting…' : 'Start presentation'}
+          </button>
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          <p className="welcome-note">
+            Uses your microphone; headphones work best. Calls are limited to {maxMinutes} minutes. {deck.disclaimer}
+          </p>
+        </form>
+      </div>
+
+      <div className="welcome-preview" aria-hidden="true">
+        {deck.slides[2] && (
+          <div className="stage stage--behind">
+            <SlideCanvas deck={deck} slide={deck.slides[2]} slideIndex={2} />
+          </div>
+        )}
+        <div className="stage stage--front">
+          <SlideCanvas deck={deck} slide={deck.slides[0]} slideIndex={0} />
+        </div>
+      </div>
+    </main>
+  )
+}

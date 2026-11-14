@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchConfig, fetchDeck } from './api'
-import { PulseIcon } from './components/Icons'
+import { ArrowLeftIcon, ArrowRightIcon, PlayIcon, PulseIcon } from './components/Icons'
 import { Controls, Transcript, VoiceStatus } from './components/Panel'
-import { SlideView } from './components/SlideView'
+import { SlideCanvas, SlideView } from './components/SlideView'
+import { Welcome } from './components/Welcome'
 import { useRealtimeSession } from './hooks/useRealtimeSession'
 import type { AppConfig, Deck, FocusMode, View } from './types'
 
@@ -54,6 +55,10 @@ export default function App() {
   const session = useRealtimeSession({ deck, onFocus, onClearHighlight })
   const { live, presentSlide } = session
 
+  // The welcome screen stays up until the first call connects.
+  const [hasBeenLive, setHasBeenLive] = useState(false)
+  if (live && !hasBeenLive) setHasBeenLive(true)
+
   const goTo = useCallback(
     (index: number) => {
       if (!deck || index < 0 || index >= deck.slides.length || index === view.slideIndex) return
@@ -92,6 +97,28 @@ export default function App() {
       mode: 'manual',
       transition: 'none',
     }))
+  const startCall = () => {
+    setView(INITIAL_VIEW)
+    void session.start(accessCode)
+  }
+
+  // How far through the deck the presentation is, counted in blocks.
+  const blockIds = deck.slides.flatMap((slide) => slide.blocks.map((block) => block.id))
+  const blockIndex = view.blockId ? blockIds.indexOf(view.blockId) : -1
+  const progress =
+    blockIndex >= 0 ? (blockIndex + 1) / blockIds.length : (view.slideIndex + 1) / deck.slides.length
+
+  const accessField = config.access_code_required && (
+    <label className="field">
+      Access code
+      <input
+        type="password"
+        value={accessCode}
+        onChange={(event) => setAccessCode(event.target.value)}
+        autoComplete="off"
+      />
+    </label>
+  )
 
   return (
     <div className="app">
@@ -113,108 +140,110 @@ export default function App() {
         </div>
       </header>
 
-      <main className="workspace">
-        <div className="stage-column">
-          <SlideView deck={deck} view={view} onBlockClick={live ? undefined : toggleBlock} />
+      {!hasBeenLive ? (
+        <Welcome
+          deck={deck}
+          maxMinutes={Math.round(config.session_max_seconds / 60)}
+          connecting={session.state === 'connecting'}
+          error={session.error}
+          accessField={accessField}
+          onStart={startCall}
+        />
+      ) : (
+        <main className="workspace">
+          <div className="stage-column">
+            <SlideView deck={deck} view={view} progress={progress} onBlockClick={live ? undefined : toggleBlock} />
 
-          <nav className="slide-nav" aria-label="Slides">
-            <button
-              type="button"
-              className="nav-arrow"
-              onClick={() => goTo(view.slideIndex - 1)}
-              disabled={view.slideIndex === 0}
-              aria-label="Previous slide"
-            >
-              ←
-            </button>
-            <ol className="thumbs">
-              {deck.slides.map((slide, index) => (
-                <li key={slide.id}>
-                  <button
-                    type="button"
-                    className={`thumb ${index === view.slideIndex ? 'is-current' : ''}`}
-                    aria-current={index === view.slideIndex ? 'true' : undefined}
-                    onClick={() => goTo(index)}
-                  >
-                    <span className="thumb-number">{index + 1}</span>
-                    {slide.nav}
-                  </button>
-                </li>
-              ))}
-            </ol>
-            <button
-              type="button"
-              className="nav-arrow"
-              onClick={() => goTo(view.slideIndex + 1)}
-              disabled={view.slideIndex === deck.slides.length - 1}
-              aria-label="Next slide"
-            >
-              →
-            </button>
-          </nav>
-        </div>
-
-        <aside className="panel">
-          <VoiceStatus state={session.state} latencyMs={session.latencyMs} secondsLeft={session.secondsLeft} />
-
-          {canStart && (
-            <form
-              className="start"
-              onSubmit={(event) => {
-                event.preventDefault()
-                setView(INITIAL_VIEW)
-                void session.start(accessCode)
-              }}
-            >
-              {config.access_code_required && (
-                <label className="field">
-                  Access code
-                  <input
-                    type="password"
-                    value={accessCode}
-                    onChange={(event) => setAccessCode(event.target.value)}
-                    autoComplete="off"
-                  />
-                </label>
-              )}
-              <button type="submit" className="primary">
-                {session.state === 'idle' ? 'Start presentation' : 'Start again'}
+            <nav className="slide-nav" aria-label="Slides">
+              <button
+                type="button"
+                className="nav-arrow"
+                onClick={() => goTo(view.slideIndex - 1)}
+                disabled={view.slideIndex === 0}
+                aria-label="Previous slide"
+              >
+                <ArrowLeftIcon />
               </button>
-              <p className="start-note">
-                An AI presenter walks you through {deck.slides.length} slides. Interrupt at any time with a
-                question and it jumps to the slide that answers it. Uses your microphone; headphones work best.
-                Calls are limited to {Math.round(config.session_max_seconds / 60)} minutes.
+              <ol className="thumbs">
+                {deck.slides.map((slide, index) => (
+                  <li key={slide.id}>
+                    <button
+                      type="button"
+                      className={`thumb ${index === view.slideIndex ? 'is-current' : ''}`}
+                      aria-current={index === view.slideIndex ? 'true' : undefined}
+                      aria-label={`Slide ${index + 1}: ${slide.nav}`}
+                      onClick={() => goTo(index)}
+                    >
+                      <span className="thumb-preview" aria-hidden="true">
+                        <SlideCanvas deck={deck} slide={slide} slideIndex={index} />
+                      </span>
+                      <span className="thumb-label">
+                        <span className="thumb-number">{index + 1}</span>
+                        {slide.nav}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+              <button
+                type="button"
+                className="nav-arrow"
+                onClick={() => goTo(view.slideIndex + 1)}
+                disabled={view.slideIndex === deck.slides.length - 1}
+                aria-label="Next slide"
+              >
+                <ArrowRightIcon />
+              </button>
+            </nav>
+          </div>
+
+          <aside className="panel">
+            <VoiceStatus state={session.state} latencyMs={session.latencyMs} getAnalysers={session.getAnalysers} />
+
+            {canStart && (
+              <form
+                className="start"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  startCall()
+                }}
+              >
+                {accessField}
+                <button type="submit" className="primary">
+                  <PlayIcon />
+                  Start again
+                </button>
+              </form>
+            )}
+
+            {session.notice && (
+              <p className="notice" role="status">
+                {session.notice}
               </p>
-            </form>
-          )}
+            )}
 
-          {session.notice && (
-            <p className="notice" role="status">
-              {session.notice}
-            </p>
-          )}
+            {session.error && (
+              <p className="error" role="alert">
+                {session.error}
+              </p>
+            )}
 
-          {session.error && (
-            <p className="error" role="alert">
-              {session.error}
-            </p>
-          )}
+            <Controls
+              live={live}
+              speaking={session.state === 'speaking'}
+              muted={session.muted}
+              paused={session.paused}
+              onPause={session.pause}
+              onResume={session.resume}
+              onStopSpeaking={session.stopSpeaking}
+              onToggleMute={session.toggleMute}
+              onEnd={session.stop}
+            />
 
-          <Controls
-            live={live}
-            speaking={session.state === 'speaking'}
-            muted={session.muted}
-            paused={session.paused}
-            onPause={session.pause}
-            onResume={session.resume}
-            onStopSpeaking={session.stopSpeaking}
-            onToggleMute={session.toggleMute}
-            onEnd={session.stop}
-          />
-
-          <Transcript lines={session.transcript} />
-        </aside>
-      </main>
+            <Transcript lines={session.transcript} />
+          </aside>
+        </main>
+      )}
     </div>
   )
 }
