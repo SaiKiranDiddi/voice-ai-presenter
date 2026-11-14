@@ -326,17 +326,15 @@ export class Presenter {
       this.deckFinished = true
       this.io.clearHighlight()
       this.io.log('deck_finished')
-      this.sendNote(closeNote(this.deck))
+      this.speakNote(closeNote(this.deck))
     } else {
       this.turn = 'block'
       this.deckFinished = false
       const { slide, block } = this.blocks[this.cursor]
       this.io.focus(slide.id, block.id, 'presenting')
       this.io.log('present_block', { block_id: block.id })
-      this.sendNote(presentNote(this.deck, this.cursor, lead))
+      this.speakNote(presentNote(this.deck, this.cursor, lead))
     }
-    // Tools are off: we already know what this turn should say.
-    this.requestResponse({ tool_choice: 'none' })
     this.io.setState('thinking')
   }
 
@@ -492,10 +490,20 @@ export class Presenter {
     if (this.audioPlaying || this.responseActive) this.updateTranscript(markAgentInterrupted)
   }
 
-  private sendNote(text: string): void {
-    this.io.send({
-      type: 'conversation.item.create',
-      item: { type: 'message', role: 'system', content: [{ type: 'input_text', text }] },
+  /**
+   * Ask the model to speak a PRESENT or CLOSE note, with a clean prompt: the
+   * session instructions and this note only, not the conversation so far.
+   * In the shared conversation, leftovers (a tool result's "Answer now",
+   * noise, an unanswered question) sometimes won over the note, and the model
+   * re-answered or went off script. What it says still joins the conversation,
+   * so later answers know what was presented. Tools are off: the app already
+   * knows what this turn should say.
+   */
+  private speakNote(text: string): void {
+    this.requestResponse({
+      tool_choice: 'none',
+      conversation: 'auto',
+      input: [{ type: 'message', role: 'system', content: [{ type: 'input_text', text }] }],
     })
   }
 

@@ -54,8 +54,9 @@ function setup() {
     ev({ type: 'conversation.item.input_audio_transcription.completed', item_id, transcript: text })
   }
 
+  /** PRESENT / CLOSE notes, which travel inside response.create as a clean prompt. */
   const notes = () =>
-    sent.filter((e) => e.item?.role === 'system').map((e) => e.item.content[0].text as string)
+    sent.filter((e) => e.type === 'response.create' && e.response?.input).map((e) => e.response.input[0].content[0].text as string)
   const lastNote = () => notes().at(-1) ?? ''
   const toolOutputs = () =>
     sent.filter((e) => e.item?.type === 'function_call_output').map((e) => JSON.parse(e.item.output))
@@ -71,9 +72,27 @@ describe('presenting the deck', () => {
   it('greets and presents the first block with tools off', () => {
     const t = setup()
     t.p.start()
-    expect(t.lastNote()).toMatch(/^PRESENT: First say one sentence that greets/)
+    expect(t.lastNote()).toMatch(/^PRESENT: First greet/)
     expect(t.sent.at(-1)).toMatchObject({ type: 'response.create', response: { tool_choice: 'none' } })
     expect(t.lastFocus()).toEqual(['intro', 'intro.what', 'presenting'])
+  })
+
+  it('speaks each note from a clean prompt, without adding it to the conversation', () => {
+    // Replays call e57157bb: after an answer, the resume note must not be
+    // read next to the tool result's "Answer now" instruction.
+    const t = setup()
+    t.p.start()
+    t.userSays('Tell me about safety')
+    t.agentCalls('show_answer', { block_id: 'dosing.renal' })
+    t.agentSays('No adjustment. Anything else, or shall I carry on?')
+    vi.advanceTimersByTime(AUTO_RESUME_MS)
+
+    const resume = t.sent.at(-1)
+    expect(resume).toMatchObject({ type: 'response.create', response: { tool_choice: 'none', conversation: 'auto' } })
+    expect(resume?.response.input).toHaveLength(1)
+    expect(resume?.response.input[0]).toMatchObject({ type: 'message', role: 'system' })
+    expect(t.lastNote()).toContain('Back to the presentation')
+    expect(t.sent.some((e) => e.type === 'conversation.item.create' && e.item?.role === 'system')).toBe(false)
   })
 
   it('moves to the next block only once the audio has finished playing', () => {
@@ -117,7 +136,7 @@ describe('goal: the slide changes to answer a question', () => {
     t.userSays('Show me dosing')
     t.agentCalls('present_slide', { slide_id: 'dosing' })
     expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
-    expect(t.lastNote()).toMatch(/^PRESENT: Start this slide by naming its topic/)
+    expect(t.lastNote()).toMatch(/^PRESENT: Begin by naming this slide's topic/)
   })
 
   it('a bad id is returned to the model with tools on, so it can retry', () => {
@@ -258,7 +277,7 @@ describe('buttons', () => {
     expect(t.states.at(-1)).toBe('paused')
     t.p.resume()
     expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
-    expect(t.lastNote()).toMatch(/^PRESENT: Start this slide by naming its topic/)
+    expect(t.lastNote()).toMatch(/^PRESENT: Begin by naming this slide's topic/)
   })
 
   it('picking a slide while paused moves the bookmark only', () => {

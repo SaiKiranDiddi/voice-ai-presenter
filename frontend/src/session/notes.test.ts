@@ -5,7 +5,7 @@ import { testDeck } from './testDeck'
 describe('presentNote', () => {
   it('greets with the agenda on the first block', () => {
     const note = presentNote(testDeck, 0, 'greeting')
-    expect(note).toMatch(/^PRESENT: First say one sentence that greets the physician/)
+    expect(note).toMatch(/^PRESENT: First greet the physician/)
     expect(note).toContain('(intro, dosing)')
     expect(note).toContain('Talking point: Talking point for intro.what')
   })
@@ -16,8 +16,8 @@ describe('presentNote', () => {
   })
 
   it('names the slide topic when jumping to the start of a slide', () => {
-    expect(presentNote(testDeck, 1, 'jump')).toContain('naming its topic')
-    expect(presentNote(testDeck, 2, 'jump')).toMatch(/^PRESENT: Present this now:/)
+    expect(presentNote(testDeck, 1, 'jump')).toContain("naming this slide's topic")
+    expect(presentNote(testDeck, 2, 'jump')).toMatch(/^PRESENT: Present this now\./)
   })
 
   it('sends the talking point, never the fact list', () => {

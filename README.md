@@ -86,7 +86,7 @@ Each slide has two to four typed blocks (`stat`, `chart`, `table`, `steps`, `cal
 
 The first version let the model drive the deck with a tool call per block. A smaller model would speak one block and then wait, so the user had to keep saying "continue". The split now is:
 
-- **The app sequences.** A small state machine, the `Presenter` in `frontend/src/session/presenter.ts`, owns a cursor into the deck. It sends the model a `PRESENT` note with one block's talking point and highlights that block. When that block's audio has finished playing, it moves on to the next one. No tool call is needed to narrate.
+- **The app sequences.** A small state machine, the `Presenter` in `frontend/src/session/presenter.ts`, owns a cursor into the deck. It asks the model to speak one block from a `PRESENT` note holding that block's talking point, and highlights that block. Each note goes out as a clean prompt (the system instructions plus the note, not the conversation so far), so leftovers such as an earlier answer instruction or background noise cannot pull the model off script; what it says still joins the conversation. When that block's audio has finished playing, it moves on to the next one. No tool call is needed to narrate.
 - **The model judges.** When the user speaks, the model picks one of three tools: `show_answer(slide_id, block_id)` for a question, `continue_presentation()` to resume, `present_slide(slide_id)` to go to a slide. Off-topic questions get a spoken refusal and no tool.
 
 State transitions:

@@ -18,21 +18,22 @@ export function presentNote(deck: Deck, index: number, lead: Lead): string {
   const audience = deck.agent.audience
   const agenda = deck.slides.map((s) => s.nav.toLowerCase()).join(', ')
   const startsSlide = slide.blocks[0].id === block.id
+  // The opening is separate from the talking point. When they shared one
+  // "sentence" budget, the model sometimes said only the opening and stopped.
   const opening = {
-    greeting: `First say one sentence that greets the ${audience} and names what you will cover (${agenda}), and one short sentence that they can interrupt with questions at any time. Then present this:`,
-    resume: 'Say "Back to the presentation." and then present this:',
-    jump: startsSlide
-      ? 'Start this slide by naming its topic in three or four words, then present this:'
-      : 'Present this now:',
+    greeting: `First greet the ${audience} in one sentence that names what you will cover (${agenda}), and say in one short sentence that they can interrupt with questions at any time.`,
+    resume: 'Begin with the words "Back to the presentation."',
+    jump: startsSlide ? "Begin by naming this slide's topic in three or four words." : 'Present this now.',
     next: startsSlide
-      ? 'This starts a new slide. Name its topic in three or four words as you begin, with no recap, and present this:'
-      : 'Carry straight on, with no lead-in or recap, and present this:',
+      ? "This starts a new slide. Begin by naming this slide's topic in three or four words, with no recap."
+      : 'Carry straight on, with no lead-in or recap.',
   }[lead]
   return (
     `PRESENT: ${opening}\n` +
     `Slide: ${slide.title}\n` +
     `Talking point: ${block.talking_point}\n` +
-    'Say this in ONE short sentence of 20 words or fewer: the headline only. The slide shows the details, so do not list them or add anything. ' +
+    'Whatever the opening, always go on to say the talking point itself, in one sentence of 20 words or fewer: the headline only. ' +
+    'The opening words never replace it. The slide shows the details, so do not list them or add anything. ' +
     'Then stop. Do not ask a question, do not ask whether to continue, and do not mention what comes next.'
   )
 }
