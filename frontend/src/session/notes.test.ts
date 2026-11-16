@@ -17,8 +17,10 @@ describe('presentNote', () => {
   })
 
   it('opens a new slide with its name, taken from the deck, and carries on within a slide', () => {
-    expect(presentNote(testDeck, 1, 'next')).toContain('"Dosing"')
-    expect(presentNote(testDeck, 1, 'jump')).toContain('"Dosing"')
+    // The full title ("Safety and tolerability"), not the short filmstrip label ("Safety").
+    const deck = { ...testDeck, slides: testDeck.slides.map((s) => (s.id === 'dosing' ? { ...s, title: 'Dosing and administration' } : s)) }
+    expect(presentNote(deck, 1, 'next')).toContain('"Dosing and administration"')
+    expect(presentNote(deck, 1, 'jump')).toContain('"Dosing and administration"')
     expect(presentNote(testDeck, 2, 'next')).toContain('Carry straight on')
     expect(presentNote(testDeck, 2, 'jump')).toContain('\nPresent this now.\n')
   })

@@ -45,7 +45,7 @@ export function presentNote(deck: Deck, index: number, lead: Lead): string {
   const startsSlide = slide.blocks[0].id === block.id
   // A new slide opens with its name and nothing else. The name is data from the
   // deck, not a sample phrase: a sample ("Turning to safety.") gets repeated on every slide.
-  const slideName = `Open with just the slide's name, "${slide.nav}", as a short heading, then go straight on. Say nothing else before the talking point.`
+  const slideName = `Open with just the slide's name, "${slide.title}", as a short heading, then go straight on. Say nothing else before the talking point.`
   // The opening is separate from the talking point. When they shared one
   // "sentence" budget, the model sometimes said only the opening and stopped.
   const opening = {
