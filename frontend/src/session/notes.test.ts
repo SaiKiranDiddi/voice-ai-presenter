@@ -16,13 +16,13 @@ describe('presentNote', () => {
     expect(presentNote(testDeck, 1, 'next')).toMatch(/^PRESENT: The call is already under way and you have already greeted the physician/)
   })
 
-  it('names the topic when a new slide starts, and carries on within a slide', () => {
-    expect(presentNote(testDeck, 1, 'next')).toContain('This starts a new slide')
-    expect(presentNote(testDeck, 2, 'next')).toContain('Carry straight on')
-  })
-
-  it('names the slide topic when jumping to the start of a slide', () => {
-    expect(presentNote(testDeck, 1, 'jump')).toContain("naming this slide's topic")
+  it('adds no lead-in, not even on a new slide, so the model has no phrase to repeat', () => {
+    // Replays a live call where "Turning to..." opened every slide.
+    for (const lead of ['next', 'jump'] as const) {
+      const note = presentNote(testDeck, 1, lead)
+      expect(note).not.toMatch(/topic|turning/i)
+    }
+    expect(presentNote(testDeck, 1, 'next')).toContain('Carry straight on')
     expect(presentNote(testDeck, 2, 'jump')).toContain('\nPresent this now.\n')
   })
 
