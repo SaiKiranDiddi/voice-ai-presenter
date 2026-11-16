@@ -63,6 +63,8 @@ export interface Deck {
   name: string
   /** Short line under the name, e.g. "Voice-led detail aid". */
   tagline?: string
+  /** One sentence on what is being presented; shown on the cover and used in the greeting. */
+  description?: string
   /** Small pill in the top bar, e.g. "Fictional product, demo only". Hidden when absent. */
   badge?: string
   disclaimer?: string

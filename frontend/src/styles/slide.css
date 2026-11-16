@@ -115,6 +115,13 @@
 
 /* ---- cover: the title page shown while the agent greets ---- */
 
+.cover {
+  background:
+    radial-gradient(46em 30em at 100% 0%, rgba(11, 122, 131, 0.13), transparent 70%),
+    radial-gradient(30em 20em at 0% 100%, rgba(11, 122, 131, 0.06), transparent 70%),
+    var(--card);
+}
+
 .cover-main {
   flex: 1;
   min-height: 0;
@@ -125,38 +132,78 @@
 }
 
 .cover-title {
-  font-size: 5.2em;
+  font-size: 5.6em;
   line-height: 1;
   letter-spacing: -0.04em;
   font-weight: 760;
-  background: linear-gradient(90deg, var(--ink), var(--accent));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  padding-bottom: 0.08em;
+  color: var(--ink);
+}
+
+.cover-description {
+  margin-top: 0.7em;
+  max-width: 24em;
+  font-size: 1.55em;
+  line-height: 1.35;
+  color: var(--ink-2);
+  text-wrap: balance;
+}
+
+.cover-hint {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55em;
+  margin-top: 1.8em;
+  padding: 0.5em 1em 0.5em 0.8em;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 0.92em;
+  font-weight: 650;
+}
+
+.cover-hint .icon {
+  width: 1.25em;
+  height: 1.25em;
 }
 
 .cover-agenda {
+  padding: 0 1.2em 0.4em;
+}
+
+.cover-agenda-label {
+  font-size: 0.74em;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 0.9em;
+}
+
+.cover-agenda ol {
   list-style: none;
-  margin: 2.2em 0 0;
-  padding: 1.4em 0 0;
-  border-top: 1px solid var(--line);
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1em 2em;
-  font-size: 1.2em;
-  font-weight: 600;
-  color: var(--ink-2);
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7em;
 }
 
 .cover-agenda li {
   display: flex;
   align-items: baseline;
-  gap: 0.7em;
+  gap: 0.6em;
+  padding: 0.5em 0.95em;
+  border: 1px solid var(--line);
+  border-radius: 0.8em;
+  background: var(--card);
+  font-size: 0.95em;
+  font-weight: 600;
+  color: var(--ink-2);
 }
 
 .cover-number {
-  font-size: 0.8em;
+  font-size: 0.82em;
   font-weight: 700;
   color: var(--accent);
   font-variant-numeric: tabular-nums;

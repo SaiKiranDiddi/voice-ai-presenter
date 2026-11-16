@@ -10,11 +10,23 @@ export type Lead = 'resume' | 'jump' | 'next'
 
 /** The opening turn, spoken over the cover before the first slide. */
 export function greetingNote(deck: Deck): string {
-  const agenda = deck.slides.map((s) => s.nav.toLowerCase()).join(', ')
+  const about = deck.description ? `${deck.name}: ${deck.description}` : deck.name
   return (
-    `GREET: Greet the ${deck.agent.audience} in one sentence that names what you will cover (${agenda}). ` +
-    'Then say in one short sentence that they can interrupt with questions at any time. ' +
-    'Then stop. Do not start presenting and do not ask a question.'
+    `GREET: Welcome the ${deck.agent.audience} and say what this presentation is about, in one sentence. It is about ${about}\n` +
+    'Then say in one short sentence that they can interrupt with a question at any time. ' +
+    'Then stop. Do not list the topics, do not start presenting, and do not ask a question.'
+  )
+}
+
+/**
+ * Sent with every PRESENT note. Each note is a clean prompt, so the model
+ * cannot see that the call is already under way; told nothing, a small model
+ * sometimes greets again or asks where to start.
+ */
+function midCall(audience: string): string {
+  return (
+    `The call is already under way and you have already greeted the ${audience}. ` +
+    `Nobody has just spoken: this is not a reply. Do not greet, do not offer help, and do not ask what the ${audience} wants.`
   )
 }
 
@@ -25,6 +37,7 @@ export function closeNote(deck: Deck): string {
 /** The PRESENT note for block `index`. Only the talking point is sent: handing over every fact invites reciting it. */
 export function presentNote(deck: Deck, index: number, lead: Lead): string {
   const { slide, block } = flattenDeck(deck)[index]
+  const audience = deck.agent.audience
   const startsSlide = slide.blocks[0].id === block.id
   // The opening is separate from the talking point. When they shared one
   // "sentence" budget, the model sometimes said only the opening and stopped.
@@ -36,7 +49,8 @@ export function presentNote(deck: Deck, index: number, lead: Lead): string {
       : 'Carry straight on, with no lead-in or recap.',
   }[lead]
   return (
-    `PRESENT: ${opening}\n` +
+    `PRESENT: ${midCall(audience)}\n` +
+    `${opening}\n` +
     `Slide: ${slide.title}\n` +
     `Talking point: ${block.talking_point}\n` +
     'Whatever the opening, always go on to say the talking point itself, in one sentence of 20 words or fewer: the headline only. ' +

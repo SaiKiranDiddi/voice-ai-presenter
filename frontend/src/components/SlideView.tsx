@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { DEFAULT_TAGLINE, type Deck, type FocusMode, type Slide, type View } from '../types'
 import { BlockBody } from './Blocks'
+import { MicIcon } from './Icons'
 
 interface CanvasProps {
   deck: Deck
@@ -60,14 +61,23 @@ export function SlideCanvas({ deck, slide, slideIndex, focusId = null, mode = 'm
   )
 }
 
-/** The title page shown while the agent greets: the deck's name and what it will cover. */
+/** The title page shown while the agent greets: what the deck is, what it covers, and that you can interrupt. */
 export function CoverCanvas({ deck }: { deck: Deck }) {
   return (
     <div className="slide-inner cover">
       <div className="cover-main">
         <p className="eyebrow">{deck.tagline ?? DEFAULT_TAGLINE}</p>
         <h2 className="cover-title">{deck.name}</h2>
-        <ol className="cover-agenda">
+        {deck.description && <p className="cover-description">{deck.description}</p>}
+        <p className="cover-hint">
+          <MicIcon />
+          Interrupt at any time with a question
+        </p>
+      </div>
+
+      <div className="cover-agenda">
+        <p className="cover-agenda-label">In this presentation</p>
+        <ol>
           {deck.slides.map((slide, index) => (
             <li key={slide.id}>
               <span className="cover-number">{String(index + 1).padStart(2, '0')}</span>
@@ -76,6 +86,7 @@ export function CoverCanvas({ deck }: { deck: Deck }) {
           ))}
         </ol>
       </div>
+
       <footer className="slide-footer">
         <span>{deck.disclaimer}</span>
         <span className="slide-footer-brand">{deck.name}</span>

@@ -82,12 +82,12 @@ describe('presenting the deck', () => {
     const t = setup()
     t.p.start()
     expect(t.allNotes()).toHaveLength(1)
-    expect(t.allNotes()[0]).toMatch(/^GREET: Greet the physician/)
+    expect(t.allNotes()[0]).toMatch(/^GREET: Welcome the physician/)
     expect(t.sent.at(-1)).toMatchObject({ type: 'response.create', response: { tool_choice: 'none' } })
     expect(t.focus).toHaveLength(0) // the cover stays up: no slide is shown yet
 
     t.agentSays('Hello, I will cover the intro and dosing.')
-    expect(t.lastNote()).toMatch(/^PRESENT: This starts a new slide/)
+    expect(t.lastNote()).toMatch(/^PRESENT: .*\nThis starts a new slide/)
     expect(t.lastFocus()).toEqual(['intro', 'intro.what', 'presenting'])
   })
 
@@ -215,7 +215,7 @@ describe('goal: the slide changes to answer a question', () => {
     t.userSays('Show me dosing')
     t.agentCalls('present_slide', { slide_id: 'dosing' })
     expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
-    expect(t.lastNote()).toMatch(/^PRESENT: Begin by naming this slide's topic/)
+    expect(t.lastNote()).toMatch(/^PRESENT: .*\nBegin by naming this slide's topic/)
   })
 
   it('a bad id is returned to the model with tools on, so it can retry', () => {
