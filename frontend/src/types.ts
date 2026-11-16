@@ -47,6 +47,7 @@ export interface Slide {
   title: string
   nav: string
   subtitle?: string
+  /** Picks the slide's arrangement. "cover" draws the title page: title, subtitle and the agenda. */
   layout: string
   blocks: Block[]
 }
@@ -63,8 +64,6 @@ export interface Deck {
   name: string
   /** Short line under the name, e.g. "Voice-led detail aid". */
   tagline?: string
-  /** One sentence on what is being presented; shown on the cover and used in the greeting. */
-  description?: string
   /** Small pill in the top bar, e.g. "Fictional product, demo only". Hidden when absent. */
   badge?: string
   disclaimer?: string
@@ -78,10 +77,8 @@ export type FocusMode = 'presenting' | 'answering' | 'manual'
 
 export type Transition = 'next' | 'prev' | 'jump' | 'none'
 
-/** What the stage is showing: the cover, or a slide and optionally one highlighted block. */
+/** What the stage is showing: a slide, and optionally one highlighted block. */
 export interface View {
-  /** The title page shown while the agent greets. It is not one of the deck's slides. */
-  cover: boolean
   slideIndex: number
   blockId: string | null
   mode: FocusMode

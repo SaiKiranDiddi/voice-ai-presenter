@@ -1,6 +1,6 @@
 # Voice-led slide presenter
 
-An AI voice agent that presents a six-slide deck, jumps to the right slide when you ask a question, and stops talking the moment you interrupt.
+An AI voice agent that presents a deck of six slides behind a title page, jumps to the right slide when you ask a question, and stops talking the moment you interrupt.
 
 **Live demo: https://voice-slide-presenter.onrender.com/** (the access code is in the submission email; the first load can take about a minute while the free instance wakes).
 
@@ -47,7 +47,7 @@ The live demo runs on Render's free tier from `render.yaml`: one Docker web serv
 
 | Do or say | Expect |
 |---|---|
-| Nothing | The agent greets you over a cover page, then presents every block of every slide without prompting |
+| Nothing | The agent greets you over the title page, then presents every block of every slide without prompting |
 | "What are the side effects?" mid-sentence | Speech stops, the Safety slide appears, the adverse-event table is highlighted |
 | Stay quiet after the answer | After five seconds it returns to the block you interrupted and carries on |
 | "Continue" after an answer | Same, immediately |
@@ -78,7 +78,8 @@ Browser (React)                        FastAPI                        OpenAI
 
 A deck carries both what is presented and how. Besides the slides, each `deck.json` has:
 
-- `name`, and optional `tagline`, `description`, `badge`, `pronunciation` and `disclaimer`: shown in the UI and used in the prompt. The `description` is the line on the cover and what the greeting says the presentation is about.
+- `name`, and optional `tagline`, `badge`, `pronunciation` and `disclaimer`: shown in the UI and used in the prompt.
+- A first slide with `"layout": "cover"` is the title page. Its `subtitle` is the line shown under the name, and its one block's talking point is what the greeting says the presentation is about.
 - `agent`: who the agent is and who it is talking to.
   - `role`: the opening of the prompt, e.g. "You are a medical science liaison presenting Cardiovex to a physician over a voice call."
   - `audience`: how the agent refers to the listener ("physician"); used in the rules, tool descriptions, greeting and closing.
@@ -96,7 +97,7 @@ Each slide has two to four typed blocks (`stat`, `chart`, `table`, `steps`, `cal
 
 The first version let the model drive the deck with a tool call per block. A smaller model would speak one block and then wait, so the user had to keep saying "continue". The split now is:
 
-- **The app sequences.** A small state machine, the `Presenter` in `frontend/src/session/presenter.ts`, owns a cursor into the deck. It holds deck logic only: `responses.ts` tells it when the model has finished a turn and cancels one safely, and `transcript.ts` records what was said. It opens with a greeting spoken over a cover page (a `GREET` note), then asks the model to speak one block from a `PRESENT` note holding that block's talking point, and highlights that block. Each note goes out as a clean prompt (the system instructions plus the note, not the conversation so far), so leftovers such as an earlier answer instruction or background noise cannot pull the model off script; what it says still joins the conversation. When that block's audio has finished playing, it moves on to the next one. No tool call is needed to narrate.
+- **The app sequences.** A small state machine, the `Presenter` in `frontend/src/session/presenter.ts`, owns a cursor into the deck. It holds deck logic only: `responses.ts` tells it when the model has finished a turn and cancels one safely, and `transcript.ts` records what was said. It opens with a greeting spoken over the title page (a `GREET` note), then asks the model to speak one block from a `PRESENT` note holding that block's talking point, and highlights that block. Each note goes out as a clean prompt (the system instructions plus the note, not the conversation so far), so leftovers such as an earlier answer instruction or background noise cannot pull the model off script; what it says still joins the conversation. When that block's audio has finished playing, it moves on to the next one. No tool call is needed to narrate.
 - **The model judges.** When the user speaks, the model picks one of three tools: `show_answer(slide_id, block_id)` for a question, `continue_presentation()` to resume, `present_slide(slide_id)` to go to a slide. Off-topic questions get a spoken refusal and no tool.
 
 State transitions:
@@ -119,7 +120,7 @@ The Presenter has no React, WebRTC or DOM in it: it takes server events and butt
 ### Interface
 
 - **Welcome screen** until the first call connects, then the workspace: the slide, a filmstrip, and a side panel.
-- **A cover page** with the deck's name, a one-line description and the agenda is shown while the agent greets in two short sentences. It is not one of the six slides: the count starts at 01 / 06 when the first block is presented.
+- **The title page is the deck's first slide**, drawn by the `cover` layout: name, one-line description, the agenda, and a reminder that you can interrupt. It has a thumbnail like any other slide, and the agent greets over it in two short sentences.
 - **The slide scales like a real slide.** Every size inside it is in container units, so the same component draws the stage, the filmstrip thumbnails, and the welcome preview.
 - **The highlighted block says why it is highlighted**: teal "Presenting" while the agent narrates, amber "Source for this answer" when it answers a question.
 - **The voice visual is live.** An orb swells with the agent's voice, breathes while listening with a ring that follows the microphone, and swirls while thinking, so the user can see they are heard. Teal while presenting, amber while answering from a source.
@@ -139,7 +140,7 @@ Turn detection runs on OpenAI's side (semantic VAD with `interrupt_response`). W
 
 ```
 backend/decks/
-  cardiovex/deck.json   the six slides and how the agent presents them
+  cardiovex/deck.json   the title page, the six slides, and how the agent presents them
 backend/app/
   deck.py        pick (DECK), load and validate
   prompt.py      system instructions and tool schema, built from the deck

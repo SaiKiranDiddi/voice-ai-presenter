@@ -7,8 +7,7 @@ import { Welcome } from './components/Welcome'
 import { useRealtimeSession } from './hooks/useRealtimeSession'
 import { DEFAULT_TAGLINE, type AppConfig, type Deck, type FocusMode, type View } from './types'
 
-/** A call opens on the cover; the first block the agent presents replaces it. */
-const INITIAL_VIEW: View = { cover: true, slideIndex: 0, blockId: null, mode: 'manual', transition: 'none' }
+const INITIAL_VIEW: View = { slideIndex: 0, blockId: null, mode: 'manual', transition: 'none' }
 
 function formatClock(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
@@ -35,11 +34,11 @@ export default function App() {
   const showSlide = useCallback((slideIndex: number, blockId: string | null, mode: FocusMode) => {
     setView((current) => {
       let transition: View['transition'] = 'none'
-      if (current.cover || slideIndex !== current.slideIndex) {
+      if (slideIndex !== current.slideIndex) {
         // A jump to answer a question crossfades; walking the deck slides sideways.
-        transition = mode === 'answering' ? 'jump' : current.cover || slideIndex > current.slideIndex ? 'next' : 'prev'
+        transition = mode === 'answering' ? 'jump' : slideIndex > current.slideIndex ? 'next' : 'prev'
       }
-      return { cover: false, slideIndex, blockId, mode, transition }
+      return { slideIndex, blockId, mode, transition }
     })
   }, [])
 
@@ -62,27 +61,24 @@ export default function App() {
   const [hasBeenLive, setHasBeenLive] = useState(false)
   if (live && !hasBeenLive) setHasBeenLive(true)
 
-  // The slide on screen, or -1 while the cover is up, so "next" from the cover is slide one.
-  const currentIndex = view.cover ? -1 : view.slideIndex
-
   const goTo = useCallback(
     (index: number) => {
-      if (!deck || index < 0 || index >= deck.slides.length || index === currentIndex) return
+      if (!deck || index < 0 || index >= deck.slides.length || index === view.slideIndex) return
       showSlide(index, null, 'manual')
       presentSlide(deck.slides[index])
     },
-    [deck, presentSlide, showSlide, currentIndex],
+    [deck, presentSlide, showSlide, view.slideIndex],
   )
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement) return
-      if (event.key === 'ArrowRight') goTo(currentIndex + 1)
-      if (event.key === 'ArrowLeft') goTo(currentIndex - 1)
+      if (event.key === 'ArrowRight') goTo(view.slideIndex + 1)
+      if (event.key === 'ArrowLeft') goTo(view.slideIndex - 1)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [goTo, currentIndex])
+  }, [goTo, view.slideIndex])
 
   if (loadError) {
     return (
@@ -112,7 +108,7 @@ export default function App() {
   const blockIds = deck.slides.flatMap((slide) => slide.blocks.map((block) => block.id))
   const blockIndex = view.blockId ? blockIds.indexOf(view.blockId) : -1
   const progress =
-    blockIndex >= 0 ? (blockIndex + 1) / blockIds.length : (currentIndex + 1) / deck.slides.length
+    blockIndex >= 0 ? (blockIndex + 1) / blockIds.length : (view.slideIndex + 1) / deck.slides.length
 
   const accessField = config.access_code_required && (
     <label className="field">
@@ -177,8 +173,8 @@ export default function App() {
               <button
                 type="button"
                 className="nav-arrow"
-                onClick={() => goTo(currentIndex - 1)}
-                disabled={currentIndex <= 0}
+                onClick={() => goTo(view.slideIndex - 1)}
+                disabled={view.slideIndex === 0}
                 aria-label="Previous slide"
               >
                 <ArrowLeftIcon />
@@ -188,8 +184,8 @@ export default function App() {
                   <li key={slide.id}>
                     <button
                       type="button"
-                      className={`thumb ${index === currentIndex ? 'is-current' : ''}`}
-                      aria-current={index === currentIndex ? 'true' : undefined}
+                      className={`thumb ${index === view.slideIndex ? 'is-current' : ''}`}
+                      aria-current={index === view.slideIndex ? 'true' : undefined}
                       aria-label={`Slide ${index + 1}: ${slide.nav}`}
                       onClick={() => goTo(index)}
                     >
@@ -207,8 +203,8 @@ export default function App() {
               <button
                 type="button"
                 className="nav-arrow"
-                onClick={() => goTo(currentIndex + 1)}
-                disabled={currentIndex === deck.slides.length - 1}
+                onClick={() => goTo(view.slideIndex + 1)}
+                disabled={view.slideIndex === deck.slides.length - 1}
                 aria-label="Next slide"
               >
                 <ArrowRightIcon />

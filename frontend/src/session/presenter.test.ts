@@ -55,49 +55,26 @@ function setup() {
     ev({ type: 'conversation.item.input_audio_transcription.completed', item_id, transcript: text })
   }
 
-  /** Every note sent so far; notes travel inside response.create as a clean prompt. */
-  const allNotes = () =>
+  /** PRESENT / CLOSE notes, which travel inside response.create as a clean prompt. */
+  const notes = () =>
     sent.filter((e) => e.type === 'response.create' && e.response?.input).map((e) => e.response.input[0].content[0].text as string)
-  /** PRESENT / CLOSE notes: everything after the greeting. */
-  const notes = () => allNotes().filter((text) => !text.startsWith('GREET:'))
   const lastNote = () => notes().at(-1) ?? ''
   const toolOutputs = () =>
     sent.filter((e) => e.item?.type === 'function_call_output').map((e) => JSON.parse(e.item.output))
   const lastFocus = () => focus.at(-1)
 
-  /** Open the call and let the greeting play, so block 0 is the next thing spoken. */
-  const begin = () => {
-    p.start()
-    agentSays('Hello, I will cover the intro and dosing.')
-  }
-
-  return { p, io, ev, begin, allNotes, sent, focus, states, getTranscript: () => transcript, agentSays, agentCalls, userSays, notes, lastNote, toolOutputs, lastFocus }
+  return { p, io, ev, sent, focus, states, getTranscript: () => transcript, agentSays, agentCalls, userSays, notes, lastNote, toolOutputs, lastFocus }
 }
 
 beforeEach(() => vi.useFakeTimers())
 afterEach(() => vi.useRealTimers())
 
 describe('presenting the deck', () => {
-  it('greets over the cover first, then presents the first block with tools off', () => {
+  it('greets and presents the first block with tools off', () => {
     const t = setup()
     t.p.start()
-    expect(t.allNotes()).toHaveLength(1)
-    expect(t.allNotes()[0]).toMatch(/^GREET: Welcome the physician/)
+    expect(t.lastNote()).toMatch(/^GREET: Welcome the physician/)
     expect(t.sent.at(-1)).toMatchObject({ type: 'response.create', response: { tool_choice: 'none' } })
-    expect(t.focus).toHaveLength(0) // the cover stays up: no slide is shown yet
-
-    t.agentSays('Hello, I will cover the intro and dosing.')
-    expect(t.lastNote()).toMatch(/^PRESENT: .*\nThis starts a new slide/)
-    expect(t.lastFocus()).toEqual(['intro', 'intro.what', 'presenting'])
-  })
-
-  it('a question during the greeting is answered, then the deck starts at the first block', () => {
-    const t = setup()
-    t.p.start()
-    t.userSays('What is it?')
-    t.agentCalls('show_answer', { block_id: 'intro.what' })
-    t.agentSays('A test drug. Anything else, or shall I carry on?')
-    vi.advanceTimersByTime(AUTO_RESUME_MS)
     expect(t.lastFocus()).toEqual(['intro', 'intro.what', 'presenting'])
   })
 
@@ -105,7 +82,7 @@ describe('presenting the deck', () => {
     // Replays call e57157bb: after an answer, the resume note must not be
     // read next to the tool result's "Answer now" instruction.
     const t = setup()
-    t.begin()
+    t.p.start()
     t.userSays('Tell me about safety')
     t.agentCalls('show_answer', { block_id: 'dosing.renal' })
     t.agentSays('No adjustment. Anything else, or shall I carry on?')
@@ -121,7 +98,7 @@ describe('presenting the deck', () => {
 
   it('moves to the next block only once the audio has finished playing', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.agentSays('Testex is a test drug.', { cutBeforeAudioEnds: true })
     expect(t.notes()).toHaveLength(1) // generation done, still speaking: no slide change
     t.ev({ type: 'output_audio_buffer.stopped' })
@@ -132,7 +109,7 @@ describe('presenting the deck', () => {
 
   it('walks every block and then closes', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     for (let i = 0; i < 3; i++) t.agentSays(`block ${i}`)
     expect(t.lastNote()).toMatch(/^CLOSE:/)
     expect(t.io.clearHighlight).toHaveBeenCalled()
@@ -146,7 +123,7 @@ describe('presenting the deck', () => {
 describe('ending on its own after the deck', () => {
   /** Present every block and speak the closing line. */
   const finishDeck = (t: ReturnType<typeof setup>) => {
-    t.begin()
+    t.p.start()
     for (let i = 0; i < 3; i++) t.agentSays(`block ${i}`)
     t.agentSays('Thanks, any questions?')
   }
@@ -201,7 +178,7 @@ describe('ending on its own after the deck', () => {
 describe('goal: the slide changes to answer a question', () => {
   it('show_answer jumps to the answering block and hands the model its facts', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.userSays('Does it need a renal adjustment?')
     t.agentCalls('show_answer', { slide_id: 'dosing', block_id: 'dosing.renal' })
     expect(t.lastFocus()).toEqual(['dosing', 'dosing.renal', 'answering'])
@@ -211,7 +188,7 @@ describe('goal: the slide changes to answer a question', () => {
 
   it('present_slide goes to the slide the user asked for', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.userSays('Show me dosing')
     t.agentCalls('present_slide', { slide_id: 'dosing' })
     expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
@@ -220,7 +197,7 @@ describe('goal: the slide changes to answer a question', () => {
 
   it('a bad id is returned to the model with tools on, so it can retry', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.userSays('What about pricing?')
     t.agentCalls('present_slide', { slide_id: 'pricing' })
     expect(t.toolOutputs().at(-1)).toMatchObject({ ok: false, valid_slide_ids: ['intro', 'dosing'] })
@@ -230,7 +207,7 @@ describe('goal: the slide changes to answer a question', () => {
 
   it('acts on only the first of several tool calls', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.userSays('Dosing?')
     t.ev({ type: 'response.created' })
     t.ev({ type: 'response.function_call_arguments.done', call_id: 'a', name: 'present_slide', arguments: '{"slide_id":"dosing"}' })
@@ -244,7 +221,7 @@ describe('goal: the slide changes to answer a question', () => {
 describe('goal: the user can interrupt', () => {
   it('barge-in marks the agent line interrupted and keeps the place in the deck', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.agentSays('Testex is')
     t.agentSays('Once daily', { cutBeforeAudioEnds: true }) // block 1 playing
     t.ev({ type: 'input_audio_buffer.speech_started', item_id: 'u' })
@@ -255,7 +232,7 @@ describe('goal: the user can interrupt', () => {
 
   it('after an answer it resumes the cut-off block on its own if the user stays quiet', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.agentSays('Testex is')
     t.agentSays('Once daily', { cutBeforeAudioEnds: true })
     t.userSays('Any renal adjustment?')
@@ -272,7 +249,7 @@ describe('goal: the user can interrupt', () => {
 
   it('does not auto-resume if the user speaks again', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.userSays('What is it?')
     t.agentCalls('show_answer', { block_id: 'intro.what' })
     t.agentSays('A test drug. Anything else?')
@@ -284,7 +261,7 @@ describe('goal: the user can interrupt', () => {
 
   it('"continue" resumes from the interrupted block', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.agentSays('Testex is')
     t.userSays('Hmm, okay, go on')
     t.agentCalls('continue_presentation', {})
@@ -294,7 +271,7 @@ describe('goal: the user can interrupt', () => {
 
   it('the Stop button cancels speech, then waits without resuming', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.ev({ type: 'response.created' })
     t.ev({ type: 'output_audio_buffer.started' })
     t.p.stopSpeaking()
@@ -307,7 +284,7 @@ describe('goal: the user can interrupt', () => {
 
   it('the Continue button resumes the block that Stop cut off', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.agentSays('Testex is')
     t.ev({ type: 'response.created' })
     t.ev({ type: 'output_audio_buffer.started' }) // block 1 playing
@@ -320,7 +297,7 @@ describe('goal: the user can interrupt', () => {
 
   it('a cancel we asked for wins even if the response completed first', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.ev({ type: 'response.created' })
     t.p.stopSpeaking()
     t.ev({ type: 'response.done', response: { status: 'completed' } })
@@ -332,7 +309,7 @@ describe('goal: the user can interrupt', () => {
 describe('buttons', () => {
   it('clicking a slide while the agent speaks cancels, then presents that slide', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.ev({ type: 'response.created' })
     t.p.goToSlide('dosing')
     expect(t.notes()).toHaveLength(1) // waits for the cancel to land
@@ -342,13 +319,13 @@ describe('buttons', () => {
 
   it('a click just after the next block was requested cancels it, not races it', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.agentSays('Testex is a test drug.') // block 0 ends; block 1 is requested
     const creates = () => t.sent.filter((e) => e.type === 'response.create').length
-    expect(creates()).toBe(3)
+    expect(creates()).toBe(2)
 
     t.p.goToSlide('intro') // before the server confirmed block 1's response
-    expect(creates()).toBe(3) // no second response.create while one is in flight
+    expect(creates()).toBe(2) // no second response.create while one is in flight
     t.ev({ type: 'response.created' })
     expect(t.sent.at(-1)).toEqual({ type: 'response.cancel' })
     t.ev({ type: 'response.done', response: { status: 'cancelled' } })
@@ -361,12 +338,26 @@ describe('buttons', () => {
 
 })
 
+describe('before the call is open', () => {
+  it('a slide picked while connecting is where the call starts, with nothing sent early', () => {
+    // Replays call bccb0bc9: the click was sent into a closed channel and lost,
+    // so the agent greeted and started from the first slide instead.
+    const t = setup()
+    t.p.goToSlide('dosing')
+    expect(t.sent).toHaveLength(0)
+    t.p.start()
+    expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
+    expect(t.notes()).toHaveLength(1)
+    expect(t.lastNote()).toMatch(/^PRESENT: /)
+  })
+})
+
 describe('when the server refuses a response.create', () => {
   const lastCreateId = (sent: Sent[]) => sent.filter((e) => e.type === 'response.create').at(-1)?.event_id
 
   it('a refused request does not leave the buttons waiting forever', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.ev({ type: 'error', error: { code: 'invalid_request_error', message: 'nope', event_id: lastCreateId(t.sent) } })
     expect(t.io.setError).toHaveBeenCalledWith('nope')
     expect(t.states.at(-1)).toBe('listening')
@@ -379,7 +370,7 @@ describe('when the server refuses a response.create', () => {
 
   it('a click waiting on a refused request runs at once', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.p.goToSlide('dosing') // queued until the first response is confirmed
     t.ev({ type: 'error', error: { code: 'invalid_request_error', event_id: lastCreateId(t.sent) } })
     expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
@@ -388,7 +379,7 @@ describe('when the server refuses a response.create', () => {
 
   it('"already has an active response" waits for that response instead', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.ev({ type: 'error', error: { code: 'conversation_already_has_active_response', event_id: lastCreateId(t.sent) } })
     expect(t.io.setError).not.toHaveBeenCalled()
     t.ev({ type: 'response.created' })
@@ -398,7 +389,7 @@ describe('when the server refuses a response.create', () => {
 
   it('an error about some other event leaves the request in flight', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.ev({ type: 'error', error: { code: 'item_not_found', event_id: 'something_else' } })
     t.p.goToSlide('dosing')
     expect(t.lastFocus()?.[1]).toBe('intro.what') // still waits for the cancel to land
@@ -410,7 +401,7 @@ describe('noise mistaken for speech', () => {
     // Replays call dc382645: a cough cut a block off, the model called
     // continue_presentation, and the empty transcript arrived just after.
     const t = setup()
-    t.begin()
+    t.p.start()
     t.agentSays('Testex is', { cutBeforeAudioEnds: true })
     t.ev({ type: 'input_audio_buffer.speech_started', item_id: 'cough' })
     t.ev({ type: 'input_audio_buffer.speech_stopped' })
@@ -424,14 +415,14 @@ describe('noise mistaken for speech', () => {
 
   it('a failed delete is logged, not shown to the user', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.ev({ type: 'error', error: { code: 'item_not_found', event_id: 'delete_cough' } })
     expect(t.io.setError).not.toHaveBeenCalled()
   })
 
   it('real speech stays in the conversation', () => {
     const t = setup()
-    t.begin()
+    t.p.start()
     t.userSays('Is it once daily?')
     expect(t.sent.some((e) => e.type === 'conversation.item.delete')).toBe(false)
   })

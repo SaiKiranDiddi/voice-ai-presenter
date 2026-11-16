@@ -18,7 +18,7 @@
  */
 import type { AgentState, Deck, FocusMode, ServerEvent, TranscriptLine } from '../types'
 import { flattenDeck, firstBlockOfSlide, type FlatBlock } from './deck'
-import { answerInstruction, closeNote, greetingNote, presentNote, type Lead } from './notes'
+import { answerInstruction, closeNote, presentNote, type Lead } from './notes'
 import { ResponseTracker } from './responses'
 import { resolveToolCall, type ToolCall } from './tools'
 import { Transcript } from './transcript'
@@ -48,13 +48,12 @@ export interface PresenterIO {
 /**
  * What the response being generated or spoken is for. It decides what happens
  * when that turn finishes:
- *   greeting -> present the first block
  *   block   -> present the next block
  *   reply   -> wait, then resume the deck if the user stays quiet
  *   closing -> the deck is finished; listen, and end the call if the user stays quiet
  *   idle    -> speech was cancelled by a button; do nothing until told
  */
-type TurnKind = 'greeting' | 'block' | 'reply' | 'closing' | 'idle'
+type TurnKind = 'block' | 'reply' | 'closing' | 'idle'
 
 export class Presenter {
   private readonly deck: Deck
@@ -67,7 +66,9 @@ export class Presenter {
   cursor = 0
   deckFinished = false
 
-  private turn: TurnKind = 'greeting'
+  private turn: TurnKind = 'block'
+  /** The call is open. Until then nothing can be said, so a slide click only moves the cursor. */
+  private started = false
   /** Tool calls from the current response, run once its turn finishes. */
   private pending: ToolCall[] = []
   private userSpeaking = false
@@ -100,23 +101,25 @@ export class Presenter {
 
   // ---- user actions ---------------------------------------------------------
 
-  /** The call is open: greet over the cover. The first block follows once the greeting has played. */
+  /**
+   * The call is open: greet over the first block (the title page) and carry on
+   * from there. If the user already picked a slide while connecting, start on it.
+   */
   start(): void {
-    this.turn = 'greeting'
-    this.io.log('greeting')
-    this.speakNote(greetingNote(this.deck))
-    this.io.setState('thinking')
+    this.started = true
+    this.presentFrom(this.cursor, this.cursor === 0 ? 'greeting' : 'jump')
   }
 
   /** Stop button: silence the agent and wait. No auto-resume after this. */
   stopSpeaking(): void {
+    if (!this.started) return
     this.io.log('interruption', { via: 'button' })
     this.cancelSpeech(() => this.io.setState('listening'))
   }
 
   /** Continue button: carry on from the block that was stopped or interrupted. */
   resume(): void {
-    if (this.deckFinished) return
+    if (!this.started || this.deckFinished) return
     this.io.log('manual_resume')
     this.cancelSpeech(() => this.presentFrom(this.cursor, 'resume'))
   }
@@ -126,6 +129,10 @@ export class Presenter {
     const index = firstBlockOfSlide(this.deck, slideId)
     if (index === -1) return
     this.io.log('manual_nav', { slide_id: slideId })
+    if (!this.started) {
+      this.cursor = index
+      return
+    }
     this.cancelSpeech(() => this.presentFrom(index, 'jump'))
   }
 
@@ -227,9 +234,6 @@ export class Presenter {
       return
     }
     switch (this.turn) {
-      case 'greeting':
-        this.presentFrom(0, 'next')
-        break
       case 'block':
         this.presentFrom(this.cursor + 1, 'next')
         break

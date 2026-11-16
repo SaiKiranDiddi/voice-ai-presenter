@@ -5,16 +5,15 @@
 import type { Deck } from '../types'
 import { flattenDeck } from './deck'
 
-/** How a block is introduced: after a question, after a jump, or in sequence. */
-export type Lead = 'resume' | 'jump' | 'next'
+/** How a block is introduced: opening the call, after a question, after a jump, or in sequence. */
+export type Lead = 'greeting' | 'resume' | 'jump' | 'next'
 
-/** The opening turn, spoken over the cover before the first slide. */
-export function greetingNote(deck: Deck): string {
-  const about = deck.description ? `${deck.name}: ${deck.description}` : deck.name
+/** The opening turn of the call, spoken over the deck's first block (the title page). */
+function greetingNote(audience: string, talkingPoint: string): string {
   return (
-    `GREET: Welcome the ${deck.agent.audience} and say what this presentation is about, in one sentence. It is about ${about}\n` +
+    `GREET: Welcome the ${audience} and say what this presentation is about, in one sentence, from this: ${talkingPoint}\n` +
     'Then say in one short sentence that they can interrupt with a question at any time. ' +
-    'Then stop. Do not list the topics, do not start presenting, and do not ask a question.'
+    'Then stop. Do not list the topics, do not start on the next slide, and do not ask a question.'
   )
 }
 
@@ -31,22 +30,28 @@ function midCall(audience: string): string {
 }
 
 export function closeNote(deck: Deck): string {
-  return `CLOSE: The deck is finished. Thank the ${deck.agent.audience} in one sentence and ask whether they have any questions.`
+  const audience = deck.agent.audience
+  return (
+    `CLOSE: You have just finished presenting the last slide. Thank the ${audience} in one sentence and ask whether they have any questions. ` +
+    'Do not greet, and do not offer to go through the deck.'
+  )
 }
 
-/** The PRESENT note for block `index`. Only the talking point is sent: handing over every fact invites reciting it. */
+/** The note for block `index`: PRESENT, or GREET when it opens the call. Only the talking point is sent: handing over every fact invites reciting it. */
 export function presentNote(deck: Deck, index: number, lead: Lead): string {
   const { slide, block } = flattenDeck(deck)[index]
   const audience = deck.agent.audience
+  if (lead === 'greeting') return greetingNote(audience, block.talking_point)
   const startsSlide = slide.blocks[0].id === block.id
+  // Spoken, not read out: a small model otherwise says "Slide topic: ...".
+  const nameTopic =
+    'Begin by naming this slide\'s topic in three or four words, as a presenter would say it aloud ("Turning to safety."). Never say the words "slide topic".'
   // The opening is separate from the talking point. When they shared one
   // "sentence" budget, the model sometimes said only the opening and stopped.
   const opening = {
     resume: 'Begin with the words "Back to the presentation."',
-    jump: startsSlide ? "Begin by naming this slide's topic in three or four words." : 'Present this now.',
-    next: startsSlide
-      ? "This starts a new slide. Begin by naming this slide's topic in three or four words, with no recap."
-      : 'Carry straight on, with no lead-in or recap.',
+    jump: startsSlide ? nameTopic : 'Present this now.',
+    next: startsSlide ? `This starts a new slide. ${nameTopic} Do not recap.` : 'Carry straight on, with no lead-in or recap.',
   }[lead]
   return (
     `PRESENT: ${midCall(audience)}\n` +

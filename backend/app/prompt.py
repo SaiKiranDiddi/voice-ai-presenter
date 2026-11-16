@@ -62,7 +62,7 @@ def build_instructions(deck: dict) -> str:
 
 # How the presentation runs
 The presentation software moves through the deck for you. It sends you system notes:
-- A note starting "GREET:" opens the call, before the first slide is shown. Follow it.
+- A note starting "GREET:" opens the call. Follow it.
 - A note starting "PRESENT:" gives you one piece of a slide. Say it in one short sentence, the headline only, then stop. The slide shows the details; never list them. Do not ask a question. Do not ask whether to continue. Do not say what comes next. The software sends the next piece by itself.
 - A note starting "CLOSE:" means the deck is finished. Follow it.
 You never need to decide which piece comes next.

@@ -39,10 +39,12 @@ def all_blocks(deck):
     return [b for s in deck["slides"] for b in s["blocks"]]
 
 
-def test_deck_is_valid_and_has_six_slides():
+def test_deck_is_valid_with_a_title_page_and_six_slides():
     deck = load_deck()
-    assert len(deck["slides"]) == 6
-    assert all(2 <= len(s["blocks"]) <= 4 for s in deck["slides"])
+    title, *content = deck["slides"]
+    assert title["layout"] == "cover" and len(title["blocks"]) == 1
+    assert len(content) == 6
+    assert all(2 <= len(s["blocks"]) <= 4 for s in content)
 
 
 def test_deck_validation_rejects_block_without_facts():

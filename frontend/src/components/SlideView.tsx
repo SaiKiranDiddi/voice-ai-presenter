@@ -18,6 +18,8 @@ interface CanvasProps {
  * is in container units, so the same markup serves the stage and the thumbnails.
  */
 export function SlideCanvas({ deck, slide, slideIndex, focusId = null, mode = 'manual', onBlockClick }: CanvasProps) {
+  if (slide.layout === 'cover') return <CoverCanvas deck={deck} slide={slide} />
+
   const hasFocus = focusId !== null && slide.blocks.some((block) => block.id === focusId)
   const answering = hasFocus && mode === 'answering'
 
@@ -61,14 +63,14 @@ export function SlideCanvas({ deck, slide, slideIndex, focusId = null, mode = 'm
   )
 }
 
-/** The title page shown while the agent greets: what the deck is, what it covers, and that you can interrupt. */
-export function CoverCanvas({ deck }: { deck: Deck }) {
+/** The "cover" layout, for a deck's title page: what the deck is, what it covers, and that you can interrupt. */
+function CoverCanvas({ deck, slide }: { deck: Deck; slide: Slide }) {
   return (
     <div className="slide-inner cover">
       <div className="cover-main">
         <p className="eyebrow">{deck.tagline ?? DEFAULT_TAGLINE}</p>
-        <h2 className="cover-title">{deck.name}</h2>
-        {deck.description && <p className="cover-description">{deck.description}</p>}
+        <h2 className="cover-title">{slide.title}</h2>
+        {slide.subtitle && <p className="cover-description">{slide.subtitle}</p>}
         <p className="cover-hint">
           <MicIcon />
           Interrupt at any time with a question
@@ -78,12 +80,15 @@ export function CoverCanvas({ deck }: { deck: Deck }) {
       <div className="cover-agenda">
         <p className="cover-agenda-label">In this presentation</p>
         <ol>
-          {deck.slides.map((slide, index) => (
-            <li key={slide.id}>
-              <span className="cover-number">{String(index + 1).padStart(2, '0')}</span>
-              {slide.nav}
-            </li>
-          ))}
+          {deck.slides.map(
+            (other, index) =>
+              other.layout !== 'cover' && (
+                <li key={other.id}>
+                  <span className="cover-number">{String(index + 1).padStart(2, '0')}</span>
+                  {other.nav}
+                </li>
+              ),
+          )}
         </ol>
       </div>
 
@@ -109,22 +114,16 @@ export function SlideView({ deck, view, progress, onBlockClick }: Props) {
   return (
     <div className="stage">
       {/* The key remounts the slide so the enter animation replays on every change. */}
-      {view.cover ? (
-        <article key="cover" className="slide">
-          <CoverCanvas deck={deck} />
-        </article>
-      ) : (
-        <article key={slide.id} className={`slide slide--enter-${view.transition}`}>
-          <SlideCanvas
-            deck={deck}
-            slide={slide}
-            slideIndex={view.slideIndex}
-            focusId={view.blockId}
-            mode={view.mode}
-            onBlockClick={onBlockClick}
-          />
-        </article>
-      )}
+      <article key={slide.id} className={`slide slide--enter-${view.transition}`}>
+        <SlideCanvas
+          deck={deck}
+          slide={slide}
+          slideIndex={view.slideIndex}
+          focusId={view.blockId}
+          mode={view.mode}
+          onBlockClick={onBlockClick}
+        />
+      </article>
       {progress !== undefined && (
         <div className="progress" aria-hidden="true">
           <span style={{ width: `${Math.round(progress * 100)}%` }} />
