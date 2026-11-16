@@ -5,8 +5,18 @@
 import type { Deck } from '../types'
 import { flattenDeck } from './deck'
 
-/** How a block is introduced: the very first one, after a question, after a jump, or in sequence. */
-export type Lead = 'greeting' | 'resume' | 'jump' | 'next'
+/** How a block is introduced: after a question, after a jump, or in sequence. */
+export type Lead = 'resume' | 'jump' | 'next'
+
+/** The opening turn, spoken over the cover before the first slide. */
+export function greetingNote(deck: Deck): string {
+  const agenda = deck.slides.map((s) => s.nav.toLowerCase()).join(', ')
+  return (
+    `GREET: Greet the ${deck.agent.audience} in one sentence that names what you will cover (${agenda}). ` +
+    'Then say in one short sentence that they can interrupt with questions at any time. ' +
+    'Then stop. Do not start presenting and do not ask a question.'
+  )
+}
 
 export function closeNote(deck: Deck): string {
   return `CLOSE: The deck is finished. Thank the ${deck.agent.audience} in one sentence and ask whether they have any questions.`
@@ -15,13 +25,10 @@ export function closeNote(deck: Deck): string {
 /** The PRESENT note for block `index`. Only the talking point is sent: handing over every fact invites reciting it. */
 export function presentNote(deck: Deck, index: number, lead: Lead): string {
   const { slide, block } = flattenDeck(deck)[index]
-  const audience = deck.agent.audience
-  const agenda = deck.slides.map((s) => s.nav.toLowerCase()).join(', ')
   const startsSlide = slide.blocks[0].id === block.id
   // The opening is separate from the talking point. When they shared one
   // "sentence" budget, the model sometimes said only the opening and stopped.
   const opening = {
-    greeting: `First greet the ${audience} in one sentence that names what you will cover (${agenda}), and say in one short sentence that they can interrupt with questions at any time.`,
     resume: 'Begin with the words "Back to the presentation."',
     jump: startsSlide ? "Begin by naming this slide's topic in three or four words." : 'Present this now.',
     next: startsSlide

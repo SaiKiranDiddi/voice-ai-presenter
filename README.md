@@ -47,7 +47,7 @@ The live demo runs on Render's free tier from `render.yaml`: one Docker web serv
 
 | Do or say | Expect |
 |---|---|
-| Nothing | The agent greets you and presents every block of every slide without prompting |
+| Nothing | The agent greets you over a cover page, then presents every block of every slide without prompting |
 | "What are the side effects?" mid-sentence | Speech stops, the Safety slide appears, the adverse-event table is highlighted |
 | Stay quiet after the answer | After five seconds it returns to the block you interrupted and carries on |
 | "Continue" after an answer | Same, immediately |
@@ -96,7 +96,7 @@ Each slide has two to four typed blocks (`stat`, `chart`, `table`, `steps`, `cal
 
 The first version let the model drive the deck with a tool call per block. A smaller model would speak one block and then wait, so the user had to keep saying "continue". The split now is:
 
-- **The app sequences.** A small state machine, the `Presenter` in `frontend/src/session/presenter.ts`, owns a cursor into the deck. It holds deck logic only: `responses.ts` tells it when the model has finished a turn and cancels one safely, and `transcript.ts` records what was said. It asks the model to speak one block from a `PRESENT` note holding that block's talking point, and highlights that block. Each note goes out as a clean prompt (the system instructions plus the note, not the conversation so far), so leftovers such as an earlier answer instruction or background noise cannot pull the model off script; what it says still joins the conversation. When that block's audio has finished playing, it moves on to the next one. No tool call is needed to narrate.
+- **The app sequences.** A small state machine, the `Presenter` in `frontend/src/session/presenter.ts`, owns a cursor into the deck. It holds deck logic only: `responses.ts` tells it when the model has finished a turn and cancels one safely, and `transcript.ts` records what was said. It opens with a greeting spoken over a cover page (a `GREET` note), then asks the model to speak one block from a `PRESENT` note holding that block's talking point, and highlights that block. Each note goes out as a clean prompt (the system instructions plus the note, not the conversation so far), so leftovers such as an earlier answer instruction or background noise cannot pull the model off script; what it says still joins the conversation. When that block's audio has finished playing, it moves on to the next one. No tool call is needed to narrate.
 - **The model judges.** When the user speaks, the model picks one of three tools: `show_answer(slide_id, block_id)` for a question, `continue_presentation()` to resume, `present_slide(slide_id)` to go to a slide. Off-topic questions get a spoken refusal and no tool.
 
 State transitions:
@@ -119,6 +119,7 @@ The Presenter has no React, WebRTC or DOM in it: it takes server events and butt
 ### Interface
 
 - **Welcome screen** until the first call connects, then the workspace: the slide, a filmstrip, and a side panel.
+- **A cover page** with the deck's name and agenda is shown while the agent greets. It is not one of the six slides: the count starts at 01 / 06 when the first block is presented.
 - **The slide scales like a real slide.** Every size inside it is in container units, so the same component draws the stage, the filmstrip thumbnails, and the welcome preview.
 - **The highlighted block says why it is highlighted**: teal "Presenting" while the agent narrates, amber "Source for this answer" when it answers a question.
 - **The voice visual is live.** An orb swells with the agent's voice, breathes while listening with a ring that follows the microphone, and swirls while thinking, so the user can see they are heard. Teal while presenting, amber while answering from a source.
@@ -149,7 +150,7 @@ frontend/src/
   session/presenter.ts          the presentation flow: cursor, tool calls, timers
   session/responses.ts          the model's current response: when a turn is over, safe cancelling
   session/tools.ts              tool call -> action (pure), incl. loose id matching
-  session/notes.ts              PRESENT / CLOSE notes sent to the model (pure)
+  session/notes.ts              GREET / PRESENT / CLOSE notes sent to the model (pure)
   session/transcript.ts         the on-screen transcript, built from server events
   session/connection.ts         the WebRTC call to OpenAI
   session/audio.ts              microphone and level meters
@@ -175,7 +176,7 @@ backend/scripts/simulate.py     typed, text-only run against the real API
 - **Speech-to-speech over a custom STT, LLM, TTS pipeline.** Lower latency and far less code, at the cost of less control over each stage and a single vendor.
 - **Each block is its own model turn**, requested once the previous block's audio ends, so there is a pause between blocks while the model starts speaking (measured at about 1.2 s, sometimes longer, before the version below). An earlier version requested the next block ahead of time to shorten this (median 0.8 s); it was removed because it roughly doubled the state the presenter had to track. It could come back as a separate module. No word-level highlighting: the API gives no word timings for spoken audio.
 - **Grounding is by prompt and tool result, not enforced.** A production system in a regulated setting would add an output check against approved claims before audio is released.
-- **What the model is told lives in two places.** The system prompt and tool schema are built in `backend/app/prompt.py`; the per-block `PRESENT` notes are written in `frontend/src/session/notes.ts`, because the browser is what sequences the deck. Moving the presenter to the backend (see next steps) would bring them together.
+- **What the model is told lives in two places.** The system prompt and tool schema are built in `backend/app/prompt.py`; the `GREET`, `PRESENT` and `CLOSE` notes are written in `frontend/src/session/notes.ts`, because the browser is what sequences the deck. Moving the presenter to the backend (see next steps) would bring them together.
 - **Rate limit is in memory** and trusts `X-Forwarded-For`; fine for one demo instance.
 - The user transcript comes from a separate transcription model and can differ slightly from what the voice model heard.
 

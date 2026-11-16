@@ -1,14 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { answerInstruction, closeNote, presentNote } from './notes'
+import { answerInstruction, closeNote, greetingNote, presentNote } from './notes'
 import { testDeck } from './testDeck'
 
-describe('presentNote', () => {
-  it('greets with the agenda on the first block', () => {
-    const note = presentNote(testDeck, 0, 'greeting')
-    expect(note).toMatch(/^PRESENT: First greet the physician/)
+describe('greetingNote', () => {
+  it('greets with the agenda and presents nothing yet', () => {
+    const note = greetingNote(testDeck)
+    expect(note).toMatch(/^GREET: Greet the physician/)
     expect(note).toContain('(intro, dosing)')
-    expect(note).toContain('Talking point: Talking point for intro.what')
+    expect(note).not.toContain('Talking point')
   })
+})
+
+describe('presentNote', () => {
 
   it('names the topic when a new slide starts, and carries on within a slide', () => {
     expect(presentNote(testDeck, 1, 'next')).toContain('This starts a new slide')

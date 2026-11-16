@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import type { Deck, FocusMode, Slide, View } from '../types'
+import { DEFAULT_TAGLINE, type Deck, type FocusMode, type Slide, type View } from '../types'
 import { BlockBody } from './Blocks'
 
 interface CanvasProps {
@@ -60,6 +60,30 @@ export function SlideCanvas({ deck, slide, slideIndex, focusId = null, mode = 'm
   )
 }
 
+/** The title page shown while the agent greets: the deck's name and what it will cover. */
+export function CoverCanvas({ deck }: { deck: Deck }) {
+  return (
+    <div className="slide-inner cover">
+      <div className="cover-main">
+        <p className="eyebrow">{deck.tagline ?? DEFAULT_TAGLINE}</p>
+        <h2 className="cover-title">{deck.name}</h2>
+        <ol className="cover-agenda">
+          {deck.slides.map((slide, index) => (
+            <li key={slide.id}>
+              <span className="cover-number">{String(index + 1).padStart(2, '0')}</span>
+              {slide.nav}
+            </li>
+          ))}
+        </ol>
+      </div>
+      <footer className="slide-footer">
+        <span>{deck.disclaimer}</span>
+        <span className="slide-footer-brand">{deck.name}</span>
+      </footer>
+    </div>
+  )
+}
+
 interface Props {
   deck: Deck
   view: View
@@ -74,16 +98,22 @@ export function SlideView({ deck, view, progress, onBlockClick }: Props) {
   return (
     <div className="stage">
       {/* The key remounts the slide so the enter animation replays on every change. */}
-      <article key={slide.id} className={`slide slide--enter-${view.transition}`}>
-        <SlideCanvas
-          deck={deck}
-          slide={slide}
-          slideIndex={view.slideIndex}
-          focusId={view.blockId}
-          mode={view.mode}
-          onBlockClick={onBlockClick}
-        />
-      </article>
+      {view.cover ? (
+        <article key="cover" className="slide">
+          <CoverCanvas deck={deck} />
+        </article>
+      ) : (
+        <article key={slide.id} className={`slide slide--enter-${view.transition}`}>
+          <SlideCanvas
+            deck={deck}
+            slide={slide}
+            slideIndex={view.slideIndex}
+            focusId={view.blockId}
+            mode={view.mode}
+            onBlockClick={onBlockClick}
+          />
+        </article>
+      )}
       {progress !== undefined && (
         <div className="progress" aria-hidden="true">
           <span style={{ width: `${Math.round(progress * 100)}%` }} />

@@ -18,7 +18,7 @@
  */
 import type { AgentState, Deck, FocusMode, ServerEvent, TranscriptLine } from '../types'
 import { flattenDeck, firstBlockOfSlide, type FlatBlock } from './deck'
-import { answerInstruction, closeNote, presentNote, type Lead } from './notes'
+import { answerInstruction, closeNote, greetingNote, presentNote, type Lead } from './notes'
 import { ResponseTracker } from './responses'
 import { resolveToolCall, type ToolCall } from './tools'
 import { Transcript } from './transcript'
@@ -48,12 +48,13 @@ export interface PresenterIO {
 /**
  * What the response being generated or spoken is for. It decides what happens
  * when that turn finishes:
+ *   greeting -> present the first block
  *   block   -> present the next block
  *   reply   -> wait, then resume the deck if the user stays quiet
  *   closing -> the deck is finished; listen, and end the call if the user stays quiet
  *   idle    -> speech was cancelled by a button; do nothing until told
  */
-type TurnKind = 'block' | 'reply' | 'closing' | 'idle'
+type TurnKind = 'greeting' | 'block' | 'reply' | 'closing' | 'idle'
 
 export class Presenter {
   private readonly deck: Deck
@@ -66,7 +67,7 @@ export class Presenter {
   cursor = 0
   deckFinished = false
 
-  private turn: TurnKind = 'block'
+  private turn: TurnKind = 'greeting'
   /** Tool calls from the current response, run once its turn finishes. */
   private pending: ToolCall[] = []
   private userSpeaking = false
@@ -99,9 +100,12 @@ export class Presenter {
 
   // ---- user actions ---------------------------------------------------------
 
-  /** The call is open: greet and present the first block. */
+  /** The call is open: greet over the cover. The first block follows once the greeting has played. */
   start(): void {
-    this.presentFrom(0, 'greeting')
+    this.turn = 'greeting'
+    this.io.log('greeting')
+    this.speakNote(greetingNote(this.deck))
+    this.io.setState('thinking')
   }
 
   /** Stop button: silence the agent and wait. No auto-resume after this. */
@@ -223,6 +227,9 @@ export class Presenter {
       return
     }
     switch (this.turn) {
+      case 'greeting':
+        this.presentFrom(0, 'next')
+        break
       case 'block':
         this.presentFrom(this.cursor + 1, 'next')
         break
@@ -278,7 +285,7 @@ export class Presenter {
   }
 
   /**
-   * Ask the model to speak a PRESENT or CLOSE note, with a clean prompt: the
+   * Ask the model to speak a GREET, PRESENT or CLOSE note, with a clean prompt: the
    * session instructions and this note only, not the conversation so far.
    * In the shared conversation, leftovers (a tool result's "Answer now",
    * noise, an unanswered question) sometimes won over the note, and the model

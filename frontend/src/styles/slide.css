@@ -113,6 +113,55 @@
   color: var(--accent);
 }
 
+/* ---- cover: the title page shown while the agent greets ---- */
+
+.cover-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 1.2em;
+}
+
+.cover-title {
+  font-size: 5.2em;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-weight: 760;
+  background: linear-gradient(90deg, var(--ink), var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  padding-bottom: 0.08em;
+}
+
+.cover-agenda {
+  list-style: none;
+  margin: 2.2em 0 0;
+  padding: 1.4em 0 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1em 2em;
+  font-size: 1.2em;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.cover-agenda li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7em;
+}
+
+.cover-number {
+  font-size: 0.8em;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- blocks and layouts ---- */
 
 .blocks {

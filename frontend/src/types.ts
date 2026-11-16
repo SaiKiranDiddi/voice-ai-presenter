@@ -76,8 +76,10 @@ export type FocusMode = 'presenting' | 'answering' | 'manual'
 
 export type Transition = 'next' | 'prev' | 'jump' | 'none'
 
-/** What the stage is showing: a slide, and optionally one highlighted block. */
+/** What the stage is showing: the cover, or a slide and optionally one highlighted block. */
 export interface View {
+  /** The title page shown while the agent greets. It is not one of the deck's slides. */
+  cover: boolean
   slideIndex: number
   blockId: string | null
   mode: FocusMode
