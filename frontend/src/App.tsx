@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchConfig, fetchDeck } from './api'
-import { ArrowLeftIcon, ArrowRightIcon, PlayIcon, PulseIcon } from './components/Icons'
+import { ArrowLeftIcon, ArrowRightIcon, EyeIcon, EyeOffIcon, PlayIcon, PulseIcon } from './components/Icons'
 import { Controls, Transcript, VoiceStatus } from './components/Panel'
 import { SlideCanvas, SlideView } from './components/SlideView'
 import { Welcome } from './components/Welcome'
@@ -20,6 +20,7 @@ export default function App() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [view, setView] = useState<View>(INITIAL_VIEW)
   const [accessCode, setAccessCode] = useState('')
+  const [showCode, setShowCode] = useState(false)
 
   useEffect(() => {
     Promise.all([fetchDeck(), fetchConfig()])
@@ -116,12 +117,23 @@ export default function App() {
   const accessField = config.access_code_required && (
     <label className="field">
       Access code
-      <input
-        type="password"
-        value={accessCode}
-        onChange={(event) => setAccessCode(event.target.value)}
-        autoComplete="off"
-      />
+      <span className="field-input">
+        <input
+          type={showCode ? 'text' : 'password'}
+          value={accessCode}
+          onChange={(event) => setAccessCode(event.target.value)}
+          autoComplete="off"
+        />
+        <button
+          type="button"
+          className="field-toggle"
+          onClick={() => setShowCode((shown) => !shown)}
+          aria-label={showCode ? 'Hide access code' : 'Show access code'}
+          aria-pressed={showCode}
+        >
+          {showCode ? <EyeOffIcon /> : <EyeIcon />}
+        </button>
+      </span>
     </label>
   )
 

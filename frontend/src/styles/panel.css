@@ -460,12 +460,45 @@
   font-weight: 600;
 }
 
+.field-input {
+  position: relative;
+  display: block;
+}
+
 .field input {
   font: inherit;
-  padding: 10px 12px;
+  width: 100%;
+  padding: 10px 40px 10px 12px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   background: var(--card);
+}
+
+/* The show/hide eye inside the access code field. */
+.field-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted, var(--ink-2));
+  cursor: pointer;
+}
+
+.field-toggle:hover {
+  color: var(--accent-strong);
+}
+
+.field-toggle .icon {
+  width: 18px;
+  height: 18px;
 }
 
 .primary {
