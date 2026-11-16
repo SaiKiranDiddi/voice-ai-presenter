@@ -172,12 +172,6 @@
   border-color: rgba(179, 38, 30, 0.3);
 }
 
-.voice-visual {
-  display: block;
-  width: 100%;
-  height: 92px;
-}
-
 /*
  * The orb. Colours are registered so the gradients cross-fade between
  * states; --level (presenter) and --mic (microphone) are written every
@@ -537,24 +531,6 @@
 .control:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent-strong);
-}
-
-.control--main {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px;
-  font-size: 14px;
-  border-color: transparent;
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  box-shadow: none;
-}
-
-.control--main:hover:not(:disabled) {
-  background: #d5edef;
 }
 
 .control.is-on {

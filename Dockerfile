@@ -4,9 +4,6 @@ WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
-# Voice visual: wave or orb. Override with --build-arg VITE_VOICE_VISUAL=orb.
-ARG VITE_VOICE_VISUAL=wave
-ENV VITE_VOICE_VISUAL=$VITE_VOICE_VISUAL
 RUN npm run build
 
 # Stage 2: Python API that also serves the built frontend

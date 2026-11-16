@@ -3,8 +3,8 @@
  * Each test is one thing a listener can do; the first group maps to GOAL.md.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AgentState, FocusMode, TranscriptLine } from '../types'
-import { AUTO_RESUME_MS, END_AFTER_CLOSE_MS, Presenter, type ServerEvent } from './presenter'
+import type { AgentState, FocusMode, ServerEvent, TranscriptLine } from '../types'
+import { AUTO_RESUME_MS, END_AFTER_CLOSE_MS, Presenter } from './presenter'
 import { testDeck } from './testDeck'
 
 type Sent = Record<string, any>
@@ -173,16 +173,6 @@ describe('ending on its own after the deck', () => {
     expect(t.io.endCall).not.toHaveBeenCalled()
   })
 
-  it('pausing after the close cancels it; resuming starts it again', () => {
-    const t = setup()
-    finishDeck(t)
-    t.p.pause()
-    vi.advanceTimersByTime(END_AFTER_CLOSE_MS * 2)
-    expect(t.io.endCall).not.toHaveBeenCalled()
-    t.p.resume()
-    vi.advanceTimersByTime(END_AFTER_CLOSE_MS)
-    expect(t.io.endCall).toHaveBeenCalledTimes(1)
-  })
 })
 
 describe('goal: the slide changes to answer a question', () => {
@@ -333,33 +323,6 @@ describe('buttons', () => {
     expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
   })
 
-  it('pause holds position; resume repeats the cut-off block', () => {
-    const t = setup()
-    t.p.start()
-    t.agentSays('Testex is')
-    t.ev({ type: 'response.created' })
-    t.p.pause()
-    t.ev({ type: 'response.done', response: { status: 'cancelled' } })
-    expect(t.states.at(-1)).toBe('paused')
-    t.p.resume()
-    expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
-    expect(t.lastNote()).toMatch(/^PRESENT: Begin by naming this slide's topic/)
-  })
-
-  it('picking a slide while paused moves the bookmark only', () => {
-    const t = setup()
-    t.p.start()
-    t.p.pause()
-    const before = t.sent.length
-    t.p.goToSlide('dosing')
-    expect(t.sent).toHaveLength(before)
-    t.p.resume()
-    // Resume waits for the pause's cancel to land before asking for new speech.
-    t.ev({ type: 'response.created' })
-    t.ev({ type: 'response.done', response: { status: 'cancelled' } })
-    expect(t.lastFocus()?.[1]).toBe('dosing.schedule')
-    expect(t.states.at(-1)).toBe('thinking')
-  })
 })
 
 describe('when the server refuses a response.create', () => {

@@ -240,9 +240,6 @@ export default function App() {
               live={live}
               speaking={session.state === 'speaking'}
               muted={session.muted}
-              paused={session.paused}
-              onPause={session.pause}
-              onResume={session.resume}
               onStopSpeaking={session.stopSpeaking}
               onToggleMute={session.toggleMute}
               onEnd={session.stop}

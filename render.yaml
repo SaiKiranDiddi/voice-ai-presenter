@@ -17,6 +17,3 @@ services:
         value: gpt-realtime
       - key: DECK
         value: cardiovex
-      # Read at build time; Render passes service variables to the Docker build as build args.
-      - key: VITE_VOICE_VISUAL
-        value: orb

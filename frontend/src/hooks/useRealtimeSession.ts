@@ -36,7 +36,6 @@ interface Live {
   startedAt: number
   logs: LoggedEvent[]
   timers: number[]
-  mutedBeforePause: boolean
 }
 
 export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options) {
@@ -46,7 +45,6 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [muted, setMuted] = useState(false)
-  const [paused, setPaused] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
 
   const live = useRef<Live | null>(null)
@@ -76,7 +74,6 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
       s.speaker.srcObject = null
       setSecondsLeft(null)
       setMuted(false)
-      setPaused(false)
       setState(finalState)
     },
     [],
@@ -121,7 +118,6 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
         startedAt: 0,
         logs: [],
         timers: [],
-        mutedBeforePause: false,
       }
       live.current = s
 
@@ -185,31 +181,9 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
 
   const presentSlide = useCallback((slide: Slide) => live.current?.presenter.goToSlide(slide.id), [])
 
-  /** Stop speaking, stop listening, hold position. */
-  const pause = useCallback(() => {
-    const s = live.current
-    if (!s || s.presenter.paused) return
-    const track = micTrack()
-    if (track) {
-      s.mutedBeforePause = !track.enabled
-      track.enabled = false
-    }
-    setPaused(true)
-    s.presenter.pause()
-  }, [])
-
-  const resume = useCallback(() => {
-    const s = live.current
-    if (!s || !s.presenter.paused) return
-    const track = micTrack()
-    if (track) track.enabled = !s.mutedBeforePause
-    setPaused(false)
-    s.presenter.resume()
-  }, [])
-
   const toggleMute = useCallback(() => {
     const track = micTrack()
-    if (!track || live.current?.presenter.paused) return
+    if (!track) return
     track.enabled = !track.enabled
     setMuted(!track.enabled)
   }, [])
@@ -227,19 +201,16 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
 
   return {
     state,
-    live: state === 'listening' || state === 'thinking' || state === 'speaking' || state === 'paused',
+    live: state === 'listening' || state === 'thinking' || state === 'speaking',
     transcript,
     latencyMs,
     error,
     notice,
     muted,
-    paused,
     secondsLeft,
     start,
     stop,
     stopSpeaking,
-    pause,
-    resume,
     toggleMute,
     presentSlide,
     getAnalysers,

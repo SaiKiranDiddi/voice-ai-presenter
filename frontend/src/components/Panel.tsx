@@ -1,12 +1,8 @@
 import { useEffect, useRef } from 'react'
 import type { Analysers } from '../session/audio'
 import type { AgentState, TranscriptLine } from '../types'
-import { MicIcon, MicOffIcon, PauseIcon, PhoneOffIcon, PlayIcon, StopIcon } from './Icons'
+import { MicIcon, MicOffIcon, PhoneOffIcon, StopIcon } from './Icons'
 import { VoiceOrb } from './VoiceOrb'
-import { VoiceVisual } from './VoiceVisual'
-
-/** Which voice visual to show, chosen at build time: VITE_VOICE_VISUAL=orb or wave (the default). */
-const USE_ORB = import.meta.env.VITE_VOICE_VISUAL === 'orb'
 
 const STATE_LABEL: Record<AgentState, string> = {
   idle: 'Ready',
@@ -14,7 +10,6 @@ const STATE_LABEL: Record<AgentState, string> = {
   listening: 'Listening',
   thinking: 'Thinking',
   speaking: 'Speaking',
-  paused: 'Paused',
   ended: 'Call ended',
   error: 'Something went wrong',
 }
@@ -25,7 +20,6 @@ const STATE_HINT: Record<AgentState, string> = {
   listening: 'Ask a question. The presentation resumes by itself.',
   thinking: 'Working on a reply.',
   speaking: 'Just start talking to interrupt.',
-  paused: 'Microphone is off. Resume when you are ready.',
   ended: 'Start again whenever you like.',
   error: 'See the message below.',
 }
@@ -43,11 +37,7 @@ export function VoiceStatus({
 }) {
   return (
     <div className={`voice voice--${state}`}>
-      {USE_ORB ? (
-        <VoiceOrb state={state} answering={answering} getAnalysers={getAnalysers} />
-      ) : (
-        <VoiceVisual state={state} getAnalysers={getAnalysers} />
-      )}
+      <VoiceOrb state={state} answering={answering} getAnalysers={getAnalysers} />
       <div className="voice-text">
         <p className="voice-label" role="status">
           <span className="voice-dot" aria-hidden="true" />
@@ -68,30 +58,20 @@ export function Controls({
   live,
   speaking,
   muted,
-  paused,
   onStopSpeaking,
-  onPause,
-  onResume,
   onToggleMute,
   onEnd,
 }: {
   live: boolean
   speaking: boolean
   muted: boolean
-  paused: boolean
   onStopSpeaking: () => void
-  onPause: () => void
-  onResume: () => void
   onToggleMute: () => void
   onEnd: () => void
 }) {
   if (!live) return null
   return (
     <div className="controls">
-      <button type="button" className="control control--main" onClick={paused ? onResume : onPause}>
-        {paused ? <PlayIcon /> : <PauseIcon />}
-        {paused ? 'Resume' : 'Pause'}
-      </button>
       <button type="button" className="control" onClick={onStopSpeaking} disabled={!speaking}>
         <StopIcon />
         <span>Stop talking</span>
@@ -101,7 +81,6 @@ export function Controls({
         className={`control ${muted ? 'is-on' : ''}`}
         onClick={onToggleMute}
         aria-pressed={muted}
-        disabled={paused}
       >
         {muted ? <MicOffIcon /> : <MicIcon />}
         <span>{muted ? 'Unmute' : 'Mute'}</span>

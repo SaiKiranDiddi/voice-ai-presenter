@@ -31,13 +31,6 @@ export const PlayIcon = () => (
   </Icon>
 )
 
-export const PauseIcon = () => (
-  <Icon filled>
-    <rect x="6" y="5" width="4.5" height="14" rx="1.2" />
-    <rect x="13.5" y="5" width="4.5" height="14" rx="1.2" />
-  </Icon>
-)
-
 export const StopIcon = () => (
   <Icon filled>
     <rect x="6" y="6" width="12" height="12" rx="2.5" />

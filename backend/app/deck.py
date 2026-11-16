@@ -36,8 +36,8 @@ def validate_deck(deck: dict) -> None:
         raise ValueError("deck needs an agent section")
     validate_agent(deck["agent"])
     seen: set[str] = set()
-    if not 5 <= len(deck["slides"]) <= 6:
-        raise ValueError("deck must have 5-6 slides")
+    if not deck.get("slides"):
+        raise ValueError("deck needs at least one slide")
     for slide in deck["slides"]:
         if slide["id"] in seen:
             raise ValueError(f"duplicate id {slide['id']}")

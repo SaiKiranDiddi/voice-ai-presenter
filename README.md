@@ -2,7 +2,17 @@
 
 An AI voice agent that presents a six-slide deck, jumps to the right slide when you ask a question, and stops talking the moment you interrupt.
 
-The deck is a detail aid for **Cardiovex, a fictional drug**, presented to a physician. The agent answers only from approved content, and every answer highlights the part of the slide it came from. Decks are swappable: see [Decks](#decks).
+**Live demo: https://voice-slide-presenter.onrender.com/** (the access code is in the submission email; the first load can take about a minute while the free instance wakes).
+
+Press **Start presentation**, allow the microphone, then try:
+
+1. Say nothing: it presents the whole deck on its own.
+2. Cut in with "What are the side effects?": it stops, shows the Safety slide and highlights the table it answers from.
+3. Stay quiet: after five seconds it goes back to where you interrupted.
+
+More in [What to try](#what-to-try). How it works is in [Architecture](#architecture).
+
+The deck is a detail aid for **Cardiovex, a fictional drug**, presented to a physician. The agent answers only from the deck's approved facts.
 
 ## Run it
 
@@ -29,7 +39,7 @@ Docker: `docker build -t presenter . && docker run -p 8000:8000 --env-file .env 
 
 The live demo runs on Render's free tier from `render.yaml`: one Docker web service that builds the frontend and serves it from FastAPI. In Render, choose **New > Blueprint**, pick this repository, and fill in the two secrets it asks for: `OPENAI_API_KEY` and `DEMO_ACCESS_CODE` (visitors enter the code before a call starts, so a public URL can't spend the key). Every push to `main` redeploys.
 
-- Settings such as `REALTIME_MODEL`, `DECK` and the call limits can be changed in the service's Environment tab; **Save and deploy** applies them. `VITE_VOICE_VISUAL` is read when the frontend is built, so it needs **Save, rebuild, and deploy**.
+- Settings such as `REALTIME_MODEL`, `DECK` and the call limits can be changed in the service's Environment tab; **Save and deploy** applies them.
 - A free service sleeps after 15 minutes without traffic and takes about a minute to wake. A free uptime monitor requesting `/api/health` every few minutes keeps it awake.
 - The free instance (0.1 CPU, 512 MB) is enough: the server uses about 65 MB, and call audio goes from the browser straight to OpenAI, never through it. Session logs are lost when the service restarts.
 
@@ -46,7 +56,6 @@ The live demo runs on Render's free tier from `render.yaml`: one Docker web serv
 | "Go back to slide two" | Presents the Mechanism slide from its start and continues from there |
 | Click a slide thumbnail | The agent stops and presents that slide straight away |
 | Press **Stop talking** | Audio stops and it waits for you |
-| Press **Pause**, then **Resume** | Speech stops and the microphone is muted; Resume presents the same block again |
 | "Is this a real drug?" | Says it is fictional |
 | Stay quiet after the closing line | After 15 seconds the call ends on its own; a question first keeps it open, and the 15 seconds start again after the answer |
 
@@ -87,7 +96,7 @@ Each slide has two to four typed blocks (`stat`, `chart`, `table`, `steps`, `cal
 
 The first version let the model drive the deck with a tool call per block. A smaller model would speak one block and then wait, so the user had to keep saying "continue". The split now is:
 
-- **The app sequences.** A small state machine, the `Presenter` in `frontend/src/session/presenter.ts`, owns a cursor into the deck. It asks the model to speak one block from a `PRESENT` note holding that block's talking point, and highlights that block. Each note goes out as a clean prompt (the system instructions plus the note, not the conversation so far), so leftovers such as an earlier answer instruction or background noise cannot pull the model off script; what it says still joins the conversation. When that block's audio has finished playing, it moves on to the next one. No tool call is needed to narrate.
+- **The app sequences.** A small state machine, the `Presenter` in `frontend/src/session/presenter.ts`, owns a cursor into the deck. It holds deck logic only: `responses.ts` tells it when the model has finished a turn and cancels one safely, and `transcript.ts` records what was said. It asks the model to speak one block from a `PRESENT` note holding that block's talking point, and highlights that block. Each note goes out as a clean prompt (the system instructions plus the note, not the conversation so far), so leftovers such as an earlier answer instruction or background noise cannot pull the model off script; what it says still joins the conversation. When that block's audio has finished playing, it moves on to the next one. No tool call is needed to narrate.
 - **The model judges.** When the user speaks, the model picks one of three tools: `show_answer(slide_id, block_id)` for a question, `continue_presentation()` to resume, `present_slide(slide_id)` to go to a slide. Off-topic questions get a spoken refusal and no tool.
 
 State transitions:
@@ -101,23 +110,18 @@ State transitions:
 | `continue_presentation` | Resume from the cursor at once |
 | `present_slide` or a thumbnail click | Cursor moves to that slide's first block; presenting continues from there |
 | Stop talking | Speech is cancelled; nothing resumes until the user speaks or clicks |
-| Pause | Speech is cancelled, microphone muted, position held; Resume presents the cursor block again |
-| Closing line, or an answer after it, finishes | Wait 15 seconds; if the user is silent, the call ends. Speech, a slide click, Pause or Stop talking cancels the wait |
+| Closing line, or an answer after it, finishes | Wait 15 seconds; if the user is silent, the call ends. Speech, a slide click or Stop talking cancels the wait |
 
 A turn counts as finished only when the model has stopped generating and the audio has stopped playing. The model generates faster than it speaks, so acting on generation alone would change the slide mid-sentence.
 
-The Presenter has no React, WebRTC or DOM in it: it takes server events and button presses, and acts through functions it is given. `presenter.test.ts` drives it with scripted events, one test per thing a listener can do (ask a question, interrupt, say "continue", ask for a slide, press Stop, pause).
+The Presenter has no React, WebRTC or DOM in it: it takes server events and button presses, and acts through functions it is given. `presenter.test.ts` drives it with scripted events, one test per thing a listener can do (ask a question, interrupt, say "continue", ask for a slide, press Stop).
 
 ### Interface
 
 - **Welcome screen** until the first call connects, then the workspace: the slide, a filmstrip, and a side panel.
 - **The slide scales like a real slide.** Every size inside it is in container units, so the same component draws the stage, the filmstrip thumbnails, and the welcome preview.
 - **The highlighted block says why it is highlighted**: teal "Presenting" while the agent narrates, amber "Source for this answer" when it answers a question.
-- **The voice visual is live**, in one of two styles chosen at build time with `VITE_VOICE_VISUAL` in `.env` (rebuild after changing it; for Docker, `--build-arg VITE_VOICE_VISUAL=orb`):
-  - `wave` (default): a bar waveform that follows the agent's audio while it speaks and the microphone while it listens.
-  - `orb`: an orb for the presenter. It swells with the agent's voice, breathes while listening with a ring that follows the microphone, and swirls while thinking. Teal while presenting, amber while answering from a source, grey when inactive, red on error.
-
-  Either way the user can see they are heard. The analysers are display only.
+- **The voice visual is live.** An orb swells with the agent's voice, breathes while listening with a ring that follows the microphone, and swirls while thinking, so the user can see they are heard. Teal while presenting, amber while answering from a source.
 - Plain CSS in `frontend/src/styles/`, Inter bundled with the app, no UI library. Motion respects `prefers-reduced-motion`.
 
 ### Interruption
@@ -142,29 +146,36 @@ backend/app/
   routes.py      /api endpoints, rate limit, event log
   main.py        app, static file serving
 frontend/src/
-  session/presenter.ts          the presentation flow: cursor, turns, tool calls, interruption
+  session/presenter.ts          the presentation flow: cursor, tool calls, timers
+  session/responses.ts          the model's current response: when a turn is over, safe cancelling
   session/tools.ts              tool call -> action (pure), incl. loose id matching
   session/notes.ts              PRESENT / CLOSE notes sent to the model (pure)
-  session/transcript.ts         transcript updates (pure)
+  session/transcript.ts         the on-screen transcript, built from server events
   session/connection.ts         the WebRTC call to OpenAI
   session/audio.ts              microphone and level meters
   hooks/useRealtimeSession.ts   React glue: wires the call, the Presenter and the backend
   components/SlideView.tsx      the slide: layouts, transitions, highlight
   components/Blocks.tsx         one renderer per block type
   components/Panel.tsx          voice card, controls, transcript
-  components/VoiceVisual.tsx    live waveform (VITE_VOICE_VISUAL=wave)
-  components/VoiceOrb.tsx       live orb (VITE_VOICE_VISUAL=orb)
+  components/VoiceOrb.tsx       live voice orb
   components/Welcome.tsx        start screen
   components/Icons.tsx          inline icons
   styles/                       tokens, slide, panel
 backend/scripts/simulate.py     typed, text-only run against the real API
 ```
 
+## How to extend
+
+- **A new deck:** add `backend/decks/<name>/deck.json` and set `DECK=<name>`. No code changes.
+- **A new block type:** add its content type in `frontend/src/types.ts`, one renderer in `components/Blocks.tsx`, and its name to `BLOCK_TYPES` in `backend/app/deck.py`.
+- **A new voice command:** add the tool to `build_tools` in `backend/app/prompt.py`, one case in `frontend/src/session/tools.ts` that turns it into an action, and one case in the Presenter's `runToolCall`.
+
 ## Trade-offs and limits
 
 - **Speech-to-speech over a custom STT, LLM, TTS pipeline.** Lower latency and far less code, at the cost of less control over each stage and a single vendor.
 - **Each block is its own model turn**, requested once the previous block's audio ends, so there is a pause between blocks while the model starts speaking (measured at about 1.2 s, sometimes longer, before the version below). An earlier version requested the next block ahead of time to shorten this (median 0.8 s); it was removed because it roughly doubled the state the presenter had to track. It could come back as a separate module. No word-level highlighting: the API gives no word timings for spoken audio.
 - **Grounding is by prompt and tool result, not enforced.** A production system in a regulated setting would add an output check against approved claims before audio is released.
+- **What the model is told lives in two places.** The system prompt and tool schema are built in `backend/app/prompt.py`; the per-block `PRESENT` notes are written in `frontend/src/session/notes.ts`, because the browser is what sequences the deck. Moving the presenter to the backend (see next steps) would bring them together.
 - **Rate limit is in memory** and trusts `X-Forwarded-For`; fine for one demo instance.
 - The user transcript comes from a separate transcription model and can differ slightly from what the voice model heard.
 
