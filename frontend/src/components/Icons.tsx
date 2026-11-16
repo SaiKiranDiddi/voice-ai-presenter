@@ -31,13 +31,6 @@ export const PlayIcon = () => (
   </Icon>
 )
 
-export const PauseIcon = () => (
-  <Icon filled>
-    <rect x="6" y="5" width="4.5" height="14" rx="1.2" />
-    <rect x="13.5" y="5" width="4.5" height="14" rx="1.2" />
-  </Icon>
-)
-
 export const StopIcon = () => (
   <Icon filled>
     <rect x="6" y="6" width="12" height="12" rx="2.5" />
@@ -79,5 +72,20 @@ export const ArrowRightIcon = () => (
 export const CheckIcon = () => (
   <Icon>
     <path d="M5 12.5l4.5 4.5L19 7.5" />
+  </Icon>
+)
+
+export const EyeIcon = () => (
+  <Icon>
+    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+    <circle cx="12" cy="12" r="3" />
+  </Icon>
+)
+
+export const EyeOffIcon = () => (
+  <Icon>
+    <path d="M10.6 5.1A10.9 10.9 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.5 6.6A17.3 17.3 0 0 0 2 12s3.6 7 10 7a10.4 10.4 0 0 0 5.4-1.5" />
+    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    <path d="m3 3 18 18" />
   </Icon>
 )

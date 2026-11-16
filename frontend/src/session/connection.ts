@@ -3,7 +3,7 @@
  * directly; JSON events travel on the "oai-events" data channel. This file
  * knows nothing about slides.
  */
-import type { ServerEvent } from './presenter'
+import type { ServerEvent } from '../types'
 
 const CALLS_URL = 'https://api.openai.com/v1/realtime/calls'
 

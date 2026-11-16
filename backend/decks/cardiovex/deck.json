@@ -24,6 +24,27 @@
   },
   "slides": [
     {
+      "id": "title",
+      "title": "Cardiovex",
+      "nav": "Title",
+      "subtitle": "A once-daily oral add-on therapy for adults with resistant hypertension.",
+      "layout": "cover",
+      "blocks": [
+        {
+          "id": "title.about",
+          "type": "callout",
+          "content": {
+            "title": "Cardiovex",
+            "text": "A once-daily oral add-on therapy for adults with resistant hypertension."
+          },
+          "talking_point": "This presentation is about Cardiovex, a once-daily oral add-on therapy for adults with resistant hypertension.",
+          "facts": [
+            "Cardiovex is a once-daily oral add-on therapy for adults with resistant hypertension."
+          ]
+        }
+      ]
+    },
+    {
       "id": "intro",
       "title": "Resistant hypertension: the unmet need",
       "nav": "Unmet need",

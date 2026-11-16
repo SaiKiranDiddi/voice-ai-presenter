@@ -3,8 +3,8 @@
  * Each test is one thing a listener can do; the first group maps to GOAL.md.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AgentState, FocusMode, TranscriptLine } from '../types'
-import { AUTO_RESUME_MS, END_AFTER_CLOSE_MS, Presenter, type ServerEvent } from './presenter'
+import type { AgentState, FocusMode, ServerEvent, TranscriptLine } from '../types'
+import { AUTO_RESUME_MS, END_AFTER_CLOSE_MS, Presenter } from './presenter'
 import { testDeck } from './testDeck'
 
 type Sent = Record<string, any>
@@ -73,7 +73,7 @@ describe('presenting the deck', () => {
   it('greets and presents the first block with tools off', () => {
     const t = setup()
     t.p.start()
-    expect(t.lastNote()).toMatch(/^PRESENT: First greet/)
+    expect(t.lastNote()).toMatch(/^GREET: Welcome the physician/)
     expect(t.sent.at(-1)).toMatchObject({ type: 'response.create', response: { tool_choice: 'none' } })
     expect(t.lastFocus()).toEqual(['intro', 'intro.what', 'presenting'])
   })
@@ -173,16 +173,6 @@ describe('ending on its own after the deck', () => {
     expect(t.io.endCall).not.toHaveBeenCalled()
   })
 
-  it('pausing after the close cancels it; resuming starts it again', () => {
-    const t = setup()
-    finishDeck(t)
-    t.p.pause()
-    vi.advanceTimersByTime(END_AFTER_CLOSE_MS * 2)
-    expect(t.io.endCall).not.toHaveBeenCalled()
-    t.p.resume()
-    vi.advanceTimersByTime(END_AFTER_CLOSE_MS)
-    expect(t.io.endCall).toHaveBeenCalledTimes(1)
-  })
 })
 
 describe('goal: the slide changes to answer a question', () => {
@@ -202,7 +192,7 @@ describe('goal: the slide changes to answer a question', () => {
     t.userSays('Show me dosing')
     t.agentCalls('present_slide', { slide_id: 'dosing' })
     expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
-    expect(t.lastNote()).toMatch(/^PRESENT: Begin by naming this slide's topic/)
+    expect(t.lastNote()).toMatch(/^PRESENT: .*\nOpen with just the slide's name, "Dosing"/)
   })
 
   it('a bad id is returned to the model with tools on, so it can retry', () => {
@@ -292,6 +282,19 @@ describe('goal: the user can interrupt', () => {
     expect(t.notes()).toHaveLength(1)
   })
 
+  it('the Continue button resumes the block that Stop cut off', () => {
+    const t = setup()
+    t.p.start()
+    t.agentSays('Testex is')
+    t.ev({ type: 'response.created' })
+    t.ev({ type: 'output_audio_buffer.started' }) // block 1 playing
+    t.p.stopSpeaking()
+    t.ev({ type: 'response.done', response: { status: 'cancelled' } })
+    t.p.resume()
+    expect(t.lastNote()).toContain('Back to the presentation')
+    expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
+  })
+
   it('a cancel we asked for wins even if the response completed first', () => {
     const t = setup()
     t.p.start()
@@ -333,32 +336,19 @@ describe('buttons', () => {
     expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
   })
 
-  it('pause holds position; resume repeats the cut-off block', () => {
-    const t = setup()
-    t.p.start()
-    t.agentSays('Testex is')
-    t.ev({ type: 'response.created' })
-    t.p.pause()
-    t.ev({ type: 'response.done', response: { status: 'cancelled' } })
-    expect(t.states.at(-1)).toBe('paused')
-    t.p.resume()
-    expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
-    expect(t.lastNote()).toMatch(/^PRESENT: Begin by naming this slide's topic/)
-  })
+})
 
-  it('picking a slide while paused moves the bookmark only', () => {
+describe('before the call is open', () => {
+  it('a slide picked while connecting is where the call starts, with nothing sent early', () => {
+    // Replays call bccb0bc9: the click was sent into a closed channel and lost,
+    // so the agent greeted and started from the first slide instead.
     const t = setup()
-    t.p.start()
-    t.p.pause()
-    const before = t.sent.length
     t.p.goToSlide('dosing')
-    expect(t.sent).toHaveLength(before)
-    t.p.resume()
-    // Resume waits for the pause's cancel to land before asking for new speech.
-    t.ev({ type: 'response.created' })
-    t.ev({ type: 'response.done', response: { status: 'cancelled' } })
-    expect(t.lastFocus()?.[1]).toBe('dosing.schedule')
-    expect(t.states.at(-1)).toBe('thinking')
+    expect(t.sent).toHaveLength(0)
+    t.p.start()
+    expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
+    expect(t.notes()).toHaveLength(1)
+    expect(t.lastNote()).toMatch(/^PRESENT: /)
   })
 })
 

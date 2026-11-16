@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
-import type { Deck, FocusMode, Slide, View } from '../types'
+import { DEFAULT_TAGLINE, type Deck, type FocusMode, type Slide, type View } from '../types'
 import { BlockBody } from './Blocks'
+import { MicIcon } from './Icons'
 
 interface CanvasProps {
   deck: Deck
@@ -17,6 +18,8 @@ interface CanvasProps {
  * is in container units, so the same markup serves the stage and the thumbnails.
  */
 export function SlideCanvas({ deck, slide, slideIndex, focusId = null, mode = 'manual', onBlockClick }: CanvasProps) {
+  if (slide.layout === 'cover') return <CoverCanvas deck={deck} slide={slide} />
+
   const hasFocus = focusId !== null && slide.blocks.some((block) => block.id === focusId)
   const answering = hasFocus && mode === 'answering'
 
@@ -50,6 +53,43 @@ export function SlideCanvas({ deck, slide, slideIndex, focusId = null, mode = 'm
             <BlockBody block={block} />
           </section>
         ))}
+      </div>
+
+      <footer className="slide-footer">
+        <span>{deck.disclaimer}</span>
+        <span className="slide-footer-brand">{deck.name}</span>
+      </footer>
+    </div>
+  )
+}
+
+/** The "cover" layout, for a deck's title page: what the deck is, what it covers, and that you can interrupt. */
+function CoverCanvas({ deck, slide }: { deck: Deck; slide: Slide }) {
+  return (
+    <div className="slide-inner cover">
+      <div className="cover-main">
+        <p className="eyebrow">{deck.tagline ?? DEFAULT_TAGLINE}</p>
+        <h2 className="cover-title">{slide.title}</h2>
+        {slide.subtitle && <p className="cover-description">{slide.subtitle}</p>}
+        <p className="cover-hint">
+          <MicIcon />
+          Interrupt at any time with a question
+        </p>
+      </div>
+
+      <div className="cover-agenda">
+        <p className="cover-agenda-label">In this presentation</p>
+        <ol>
+          {deck.slides.map(
+            (other, index) =>
+              other.layout !== 'cover' && (
+                <li key={other.id}>
+                  <span className="cover-number">{String(index + 1).padStart(2, '0')}</span>
+                  {other.nav}
+                </li>
+              ),
+          )}
+        </ol>
       </div>
 
       <footer className="slide-footer">

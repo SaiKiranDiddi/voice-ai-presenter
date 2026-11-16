@@ -15,6 +15,9 @@ interface Props {
 
 /** The first thing a visitor sees: what this is, what will happen, and one button. */
 export function Welcome({ deck, maxMinutes, connecting, error, accessField, onStart }: Props) {
+  // The preview and the count are about the content slides; the title page is not one of them.
+  const content = deck.slides.map((slide, index) => ({ slide, index })).filter(({ slide }) => slide.layout !== 'cover')
+  const [front, , behind] = content
   return (
     <main className="welcome">
       <div className="welcome-copy">
@@ -23,7 +26,7 @@ export function Welcome({ deck, maxMinutes, connecting, error, accessField, onSt
           {deck.name}, <em>presented by voice.</em>
         </h1>
         <p className="welcome-lead">
-          An AI presenter walks you through {deck.slides.length} slides in about two minutes. Ask anything along the
+          An AI presenter walks you through {content.length} slides in about two minutes. Ask anything along the
           way, and it answers from the slide that holds the evidence.
         </p>
 
@@ -75,14 +78,16 @@ export function Welcome({ deck, maxMinutes, connecting, error, accessField, onSt
       </div>
 
       <div className="welcome-preview" aria-hidden="true">
-        {deck.slides[2] && (
+        {behind && (
           <div className="stage stage--behind">
-            <SlideCanvas deck={deck} slide={deck.slides[2]} slideIndex={2} />
+            <SlideCanvas deck={deck} slide={behind.slide} slideIndex={behind.index} />
           </div>
         )}
-        <div className="stage stage--front">
-          <SlideCanvas deck={deck} slide={deck.slides[0]} slideIndex={0} />
-        </div>
+        {front && (
+          <div className="stage stage--front">
+            <SlideCanvas deck={deck} slide={front.slide} slideIndex={front.index} />
+          </div>
+        )}
       </div>
     </main>
   )

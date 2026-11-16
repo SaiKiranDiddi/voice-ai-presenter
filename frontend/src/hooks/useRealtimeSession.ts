@@ -36,7 +36,6 @@ interface Live {
   startedAt: number
   logs: LoggedEvent[]
   timers: number[]
-  mutedBeforePause: boolean
 }
 
 export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options) {
@@ -46,7 +45,8 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [muted, setMuted] = useState(false)
-  const [paused, setPaused] = useState(false)
+  /** The agent is waiting and there is more of the deck to present. */
+  const [canResume, setCanResume] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
 
   const live = useRef<Live | null>(null)
@@ -76,7 +76,7 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
       s.speaker.srcObject = null
       setSecondsLeft(null)
       setMuted(false)
-      setPaused(false)
+      setCanResume(false)
       setState(finalState)
     },
     [],
@@ -101,7 +101,10 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
           send: (event) => s.call?.send(event),
           focus: (...args) => props.current.onFocus(...args),
           clearHighlight: () => props.current.onClearHighlight(),
-          setState,
+          setState: (next) => {
+            setState(next)
+            setCanResume(next === 'listening' && !s.presenter.deckFinished)
+          },
           setTranscript,
           setError,
           setLatency: setLatencyMs,
@@ -121,7 +124,6 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
         startedAt: 0,
         logs: [],
         timers: [],
-        mutedBeforePause: false,
       }
       live.current = s
 
@@ -183,33 +185,14 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
 
   const stopSpeaking = useCallback(() => live.current?.presenter.stopSpeaking(), [])
 
+  /** Carry on from where the presentation was stopped or interrupted. */
+  const resumePresentation = useCallback(() => live.current?.presenter.resume(), [])
+
   const presentSlide = useCallback((slide: Slide) => live.current?.presenter.goToSlide(slide.id), [])
-
-  /** Stop speaking, stop listening, hold position. */
-  const pause = useCallback(() => {
-    const s = live.current
-    if (!s || s.presenter.paused) return
-    const track = micTrack()
-    if (track) {
-      s.mutedBeforePause = !track.enabled
-      track.enabled = false
-    }
-    setPaused(true)
-    s.presenter.pause()
-  }, [])
-
-  const resume = useCallback(() => {
-    const s = live.current
-    if (!s || !s.presenter.paused) return
-    const track = micTrack()
-    if (track) track.enabled = !s.mutedBeforePause
-    setPaused(false)
-    s.presenter.resume()
-  }, [])
 
   const toggleMute = useCallback(() => {
     const track = micTrack()
-    if (!track || live.current?.presenter.paused) return
+    if (!track) return
     track.enabled = !track.enabled
     setMuted(!track.enabled)
   }, [])
@@ -227,19 +210,18 @@ export function useRealtimeSession({ deck, onFocus, onClearHighlight }: Options)
 
   return {
     state,
-    live: state === 'listening' || state === 'thinking' || state === 'speaking' || state === 'paused',
+    live: state === 'listening' || state === 'thinking' || state === 'speaking',
     transcript,
     latencyMs,
     error,
     notice,
     muted,
-    paused,
+    canResume,
     secondsLeft,
     start,
     stop,
     stopSpeaking,
-    pause,
-    resume,
+    resumePresentation,
     toggleMute,
     presentSlide,
     getAnalysers,

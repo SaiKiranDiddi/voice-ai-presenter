@@ -47,6 +47,7 @@ export interface Slide {
   title: string
   nav: string
   subtitle?: string
+  /** Picks the slide's arrangement. "cover" draws the title page: title, subtitle and the agenda. */
   layout: string
   blocks: Block[]
 }
@@ -90,7 +91,6 @@ export type AgentState =
   | 'listening'
   | 'thinking'
   | 'speaking'
-  | 'paused'
   | 'ended'
   | 'error'
 
@@ -99,6 +99,20 @@ export interface TranscriptLine {
   role: 'user' | 'agent'
   text: string
   interrupted?: boolean
+}
+
+/** The fields of a Realtime server event that the app reads. */
+export interface ServerEvent {
+  type: string
+  item_id?: string
+  delta?: string
+  transcript?: string
+  call_id?: string
+  name?: string
+  arguments?: string
+  response?: { status?: string; status_details?: { error?: { message?: string } } }
+  /** event_id names the client event that caused the error, when there is one. */
+  error?: { code?: string; message?: string; event_id?: string }
 }
 
 export interface AppConfig {
