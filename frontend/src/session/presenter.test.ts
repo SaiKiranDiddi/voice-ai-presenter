@@ -104,7 +104,7 @@ describe('presenting the deck', () => {
     t.ev({ type: 'output_audio_buffer.stopped' })
     expect(t.notes()).toHaveLength(2)
     expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
-    expect(t.lastNote()).toContain('Carry straight on')
+    expect(t.lastNote()).toContain('This starts a new slide')
   })
 
   it('walks every block and then closes', () => {
@@ -192,7 +192,7 @@ describe('goal: the slide changes to answer a question', () => {
     t.userSays('Show me dosing')
     t.agentCalls('present_slide', { slide_id: 'dosing' })
     expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
-    expect(t.lastNote()).toMatch(/^PRESENT: .*\nPresent this now\./)
+    expect(t.lastNote()).toMatch(/^PRESENT: .*\nOpen with just the slide's name, "Dosing"/)
   })
 
   it('a bad id is returned to the model with tools on, so it can retry', () => {

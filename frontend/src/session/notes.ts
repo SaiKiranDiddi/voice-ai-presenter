@@ -42,14 +42,16 @@ export function presentNote(deck: Deck, index: number, lead: Lead): string {
   const { slide, block } = flattenDeck(deck)[index]
   const audience = deck.agent.audience
   if (lead === 'greeting') return greetingNote(audience, block.talking_point)
-  // No lead-in for a new slide: the title is on screen, and any example phrase
-  // written here gets repeated word for word on every slide ("Turning to...").
+  const startsSlide = slide.blocks[0].id === block.id
+  // A new slide opens with its name and nothing else. The name is data from the
+  // deck, not a sample phrase: a sample ("Turning to safety.") gets repeated on every slide.
+  const slideName = `Open with just the slide's name, "${slide.nav}", as a short heading, then go straight on. Say nothing else before the talking point.`
   // The opening is separate from the talking point. When they shared one
   // "sentence" budget, the model sometimes said only the opening and stopped.
   const opening = {
     resume: 'Begin with the words "Back to the presentation."',
-    jump: 'Present this now.',
-    next: 'Carry straight on, with no lead-in or recap.',
+    jump: startsSlide ? slideName : 'Present this now.',
+    next: startsSlide ? `This starts a new slide. ${slideName} Do not recap.` : 'Carry straight on, with no lead-in or recap.',
   }[lead]
   return (
     `PRESENT: ${midCall(audience)}\n` +
