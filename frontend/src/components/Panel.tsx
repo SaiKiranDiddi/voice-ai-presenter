@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { Analysers } from '../session/audio'
 import type { AgentState, TranscriptLine } from '../types'
-import { MicIcon, MicOffIcon, PhoneOffIcon, StopIcon } from './Icons'
+import { MicIcon, MicOffIcon, PhoneOffIcon, PlayIcon, StopIcon } from './Icons'
 import { VoiceOrb } from './VoiceOrb'
 
 const STATE_LABEL: Record<AgentState, string> = {
@@ -57,25 +57,37 @@ export function VoiceStatus({
 export function Controls({
   live,
   speaking,
+  canResume,
   muted,
   onStopSpeaking,
+  onResume,
   onToggleMute,
   onEnd,
 }: {
   live: boolean
   speaking: boolean
+  /** The agent is waiting and can carry on with the deck. */
+  canResume: boolean
   muted: boolean
   onStopSpeaking: () => void
+  onResume: () => void
   onToggleMute: () => void
   onEnd: () => void
 }) {
   if (!live) return null
   return (
     <div className="controls">
-      <button type="button" className="control" onClick={onStopSpeaking} disabled={!speaking}>
-        <StopIcon />
-        <span>Stop talking</span>
-      </button>
+      {canResume ? (
+        <button type="button" className="control" onClick={onResume}>
+          <PlayIcon />
+          <span>Continue</span>
+        </button>
+      ) : (
+        <button type="button" className="control" onClick={onStopSpeaking} disabled={!speaking}>
+          <StopIcon />
+          <span>Stop talking</span>
+        </button>
+      )}
       <button
         type="button"
         className={`control ${muted ? 'is-on' : ''}`}

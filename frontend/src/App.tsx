@@ -239,8 +239,10 @@ export default function App() {
             <Controls
               live={live}
               speaking={session.state === 'speaking'}
+              canResume={session.canResume}
               muted={session.muted}
               onStopSpeaking={session.stopSpeaking}
+              onResume={session.resumePresentation}
               onToggleMute={session.toggleMute}
               onEnd={session.stop}
             />

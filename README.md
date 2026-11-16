@@ -55,7 +55,7 @@ The live demo runs on Render's free tier from `render.yaml`: one Docker web serv
 | "Is it better than drug X?" / "What does it cost?" | Polite refusal, pointer to Medical Information, no slide change |
 | "Go back to slide two" | Presents the Mechanism slide from its start and continues from there |
 | Click a slide thumbnail | The agent stops and presents that slide straight away |
-| Press **Stop talking** | Audio stops and it waits for you |
+| Press **Stop talking**, then **Continue** | Audio stops and it waits for you; Continue picks up the block it stopped on |
 | "Is this a real drug?" | Says it is fictional |
 | Stay quiet after the closing line | After 15 seconds the call ends on its own; a question first keeps it open, and the 15 seconds start again after the answer |
 
@@ -109,7 +109,7 @@ State transitions:
 | Answer or refusal finishes | Wait five seconds; if the user is silent, resume from the cursor |
 | `continue_presentation` | Resume from the cursor at once |
 | `present_slide` or a thumbnail click | Cursor moves to that slide's first block; presenting continues from there |
-| Stop talking | Speech is cancelled; nothing resumes until the user speaks or clicks |
+| Stop talking | Speech is cancelled; nothing resumes until the user speaks or clicks. The button becomes Continue, which resumes from the cursor |
 | Closing line, or an answer after it, finishes | Wait 15 seconds; if the user is silent, the call ends. Speech, a slide click or Stop talking cancels the wait |
 
 A turn counts as finished only when the model has stopped generating and the audio has stopped playing. The model generates faster than it speaks, so acting on generation alone would change the slide mid-sentence.

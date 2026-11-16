@@ -7,7 +7,7 @@
  *
  * It reacts to two kinds of input:
  *   - server events from the Realtime data channel: handle(event)
- *   - the user's buttons: start, stopSpeaking, goToSlide
+ *   - the user's buttons: start, stopSpeaking, resume, goToSlide
  * and acts only through the PresenterIO functions it is given, so tests can
  * drive it with a fake `send` and fake timers.
  *
@@ -108,6 +108,13 @@ export class Presenter {
   stopSpeaking(): void {
     this.io.log('interruption', { via: 'button' })
     this.cancelSpeech(() => this.io.setState('listening'))
+  }
+
+  /** Continue button: carry on from the block that was stopped or interrupted. */
+  resume(): void {
+    if (this.deckFinished) return
+    this.io.log('manual_resume')
+    this.cancelSpeech(() => this.presentFrom(this.cursor, 'resume'))
   }
 
   /** The user picked a slide: stop whatever is being said and present it. */

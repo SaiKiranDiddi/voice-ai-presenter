@@ -282,6 +282,19 @@ describe('goal: the user can interrupt', () => {
     expect(t.notes()).toHaveLength(1)
   })
 
+  it('the Continue button resumes the block that Stop cut off', () => {
+    const t = setup()
+    t.p.start()
+    t.agentSays('Testex is')
+    t.ev({ type: 'response.created' })
+    t.ev({ type: 'output_audio_buffer.started' }) // block 1 playing
+    t.p.stopSpeaking()
+    t.ev({ type: 'response.done', response: { status: 'cancelled' } })
+    t.p.resume()
+    expect(t.lastNote()).toContain('Back to the presentation')
+    expect(t.lastFocus()).toEqual(['dosing', 'dosing.schedule', 'presenting'])
+  })
+
   it('a cancel we asked for wins even if the response completed first', () => {
     const t = setup()
     t.p.start()
