@@ -2,7 +2,7 @@
 
 An AI voice agent that presents a deck of six slides behind a title page, jumps to the right slide when you ask a question, and stops talking the moment you interrupt.
 
-**Live demo: https://voice-slide-presenter.onrender.com/** (the access code is in the submission email; the first load can take about a minute while the free instance wakes).
+**Live demo: https://voice-slide-presenter.onrender.com/** (the access code is in the submission email; to run it on your own machine with your own key, see [Run it](#run-it). The first load can take about a minute while the free instance wakes).
 
 Press **Start presentation**, allow the microphone, then try:
 
@@ -16,24 +16,60 @@ The deck is a detail aid for **Cardiovex, a fictional drug**, presented to a phy
 
 ## Run it
 
-Needs Python 3.11+, Node 20+, and an OpenAI API key with Realtime access.
+### 1. Use your own OpenAI key
+
+The live demo runs on my key behind an access code. To run it yourself, use your own:
+
+1. Get an API key from [platform.openai.com/api-keys](https://platform.openai.com/api-keys). It needs billing set up and access to the Realtime API; a ChatGPT subscription is not an API key.
+2. Copy `.env.example` to `.env` and set `OPENAI_API_KEY` to that key.
+3. Leave `DEMO_ACCESS_CODE` empty. No access code is needed locally; it only protects the public demo.
+
+The key stays on your machine: `.env` is git-ignored, and the browser only ever receives a session token that expires in two minutes. The server reads `.env` when it starts, so restart it after changing the file.
+
+### 2a. Quickest: Docker
+
+Needs only Docker; no Python or Node.
+
+```bash
+docker build -t presenter .
+docker run -p 8000:8000 --env-file .env presenter
+```
+
+### 2b. Without Docker
+
+Needs Python 3.11+ and Node 20+.
+
+macOS / Linux:
 
 ```bash
 cp .env.example .env          # then put your key in OPENAI_API_KEY
-python -m venv .venv && .venv/bin/pip install -r backend/requirements.txt
+python3 -m venv .venv && .venv/bin/pip install -r backend/requirements.txt
 cd frontend && npm install && npm run build && cd ..
 cd backend && ../.venv/bin/uvicorn app.main:app --port 8000
 ```
 
+Windows (PowerShell):
+
+```powershell
+copy .env.example .env        # then put your key in OPENAI_API_KEY
+py -m venv .venv
+.venv\Scripts\pip install -r backend\requirements.txt
+cd frontend; npm install; npm run build; cd ..
+cd backend; ..\.venv\Scripts\uvicorn app.main:app --port 8000
+```
+
+### 3. Open it
+
 Open http://localhost:8000, press **Start presentation**, and allow the microphone. Headphones give the cleanest interruption.
 
-To watch it without a microphone, open http://localhost:8000/?silent: the agent presents the whole deck to a silent input.
+- **Open it as `localhost`.** Browsers only allow the microphone on `localhost` or HTTPS, so `http://<another-machine's-ip>:8000` will not get mic access. To use it from another machine, put it behind HTTPS (or deploy it as below).
+- To watch it without a microphone, open http://localhost:8000/?silent: the agent presents the whole deck to a silent input.
+- "Server is missing OPENAI_API_KEY" when you press Start means `.env` has no key, or the server was started before you added it.
 
-For frontend development, run `npm run dev` in `frontend/` alongside the backend; Vite proxies `/api` to port 8000.
+### Development and tests
 
-Tests: `cd backend && ../.venv/bin/python -m pytest` for the backend, `cd frontend && npm test` for the presentation flow.
-
-Docker: `docker build -t presenter . && docker run -p 8000:8000 --env-file .env presenter`
+- Frontend development: run `npm run dev` in `frontend/` alongside the backend; Vite proxies `/api` to port 8000.
+- Tests: `cd backend && ../.venv/bin/python -m pytest` for the backend (Windows: `..\.venv\Scripts\python -m pytest`), `cd frontend && npm test` for the presentation flow.
 
 ### Deploy
 
